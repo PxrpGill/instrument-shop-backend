@@ -1,5 +1,5 @@
 from ninja import ModelSchema
-from .models import Category, Product
+from .models import Category, Product, ProductImage
 
 
 class CategorySchema(ModelSchema):
@@ -16,9 +16,24 @@ class CategoryCreateSchema(ModelSchema):
         fields = ['name', 'image']
 
 
+class ProductImageSchema(ModelSchema):
+    """Schema for ProductImage output."""
+    class Meta:
+        model = ProductImage
+        fields = ['id', 'image', 'alt_text', 'is_primary', 'created_at', 'updated_at']
+
+
+class ProductImageCreateSchema(ModelSchema):
+    """Schema for ProductImage creation."""
+    class Meta:
+        model = ProductImage
+        fields = ['image', 'alt_text', 'is_primary']
+
+
 class ProductSchema(ModelSchema):
     """Schema for Product output."""
     categories: list[CategorySchema] = []
+    images: list[ProductImageSchema] = []
 
     class Meta:
         model = Product

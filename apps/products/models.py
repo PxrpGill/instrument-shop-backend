@@ -57,3 +57,24 @@ class Product(TimeStampedModel):
 
     def __str__(self) -> str:
         return self.name
+
+
+class ProductImage(TimeStampedModel):
+    """Image model for products."""
+
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name="images",
+    )
+    image = models.ImageField(upload_to="products/")
+    alt_text = models.CharField(max_length=255, blank=True, help_text="Alternative text for the image")
+    is_primary = models.BooleanField(default=False, help_text="Set as primary image for the product")
+
+    class Meta:
+        verbose_name = "Product Image"
+        verbose_name_plural = "Product Images"
+        ordering = ["-is_primary", "-created_at"]
+
+    def __str__(self) -> str:
+        return f"{self.product.name} - {self.image.name}"

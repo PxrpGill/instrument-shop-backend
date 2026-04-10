@@ -2,13 +2,15 @@ from django.shortcuts import get_object_or_404
 from ninja import Router
 from typing import List
 
-from .models import Category, Product
+from .models import Category, Product, ProductImage
 from .schemas import (
     CategorySchema,
     CategoryCreateSchema,
     ProductSchema,
     ProductCreateSchema,
     ProductUpdateSchema,
+    ProductImageSchema,
+    ProductImageCreateSchema,
 )
 
 router = Router()
@@ -105,3 +107,39 @@ def list_products_by_category(request, category_id: int):
         .prefetch_related("categories")
         .filter(categories=category)
     )
+
+
+# ProductImage endpoints
+@router.get("/products/{int:product_id}/images", response=List[ProductImageSchema])
+def list_product_images(request, product_id: int):
+    """List all images for a product."""
+    product = get_object_or_404(Product, pk=product_id)
+    return product.images.all()
+
+
+@router.post("/products/{int:product_id}/images", response=ProductImageSchema)
+def create_product_image(request, product_id: int, payload: ProductImageCreateSchema):
+    """Add an image to a product."""
+    product = get_object_or_404(Product, pk=product_id)
+    image = ProductImage.objects.create(product=product, **payload.dict())
+    return image
+
+
+@router.put("/products/{int:product_id}/images/{int:image_id}", response=ProductImageSchema)
+def update_product_image(request, product_id: int, image_id: int, payload: ProductImageCreateSchema):
+    """Update a product image."""
+    product = get_object_or_404(Product, pk=product_id)
+    image = get_object_or_404(ProductImage, pk=image_id, product=product)
+    for key, value in payload.dict().items():
+        setattr(image, key, value)
+    image.save()
+    return image
+
+
+@router.delete("/products/{int:product_id}/images/{int:image_id}")
+def delete_product_image(request, product_id: int, image_id: int):
+    """Delete a product image."""
+    product = get_object_or_404(Product, pk=product_id)
+    image = get_object_or_404(ProductImage, pk=image_id, product=product)
+    image.delete()
+    return {"success": True}
