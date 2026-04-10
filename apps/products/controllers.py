@@ -13,29 +13,32 @@ from .schemas import (
     ProductImageCreateSchema,
 )
 
-router = Router()
+# ============================================================================
+# Categories Router
+# ============================================================================
+categories_router = Router()
 
 
-@router.get("/categories", response=List[CategorySchema])
+@categories_router.get("", response=List[CategorySchema])
 def list_categories(request):
     """List all categories."""
     return Category.objects.all()
 
 
-@router.get("/categories/{int:category_id}", response=CategorySchema)
-def get_category(request, category_id: int):
-    """Get a single category by ID."""
-    return get_object_or_404(Category, pk=category_id)
-
-
-@router.post("/categories", response=CategorySchema)
+@categories_router.post("", response=CategorySchema)
 def create_category(request, payload: CategoryCreateSchema):
     """Create a new category."""
     category = Category.objects.create(**payload.dict())
     return category
 
 
-@router.put("/categories/{int:category_id}", response=CategorySchema)
+@categories_router.get("/{int:category_id}", response=CategorySchema)
+def get_category(request, category_id: int):
+    """Get a single category by ID."""
+    return get_object_or_404(Category, pk=category_id)
+
+
+@categories_router.put("/{int:category_id}", response=CategorySchema)
 def update_category(request, category_id: int, payload: CategoryCreateSchema):
     """Update an existing category."""
     category = get_object_or_404(Category, pk=category_id)
@@ -45,7 +48,7 @@ def update_category(request, category_id: int, payload: CategoryCreateSchema):
     return category
 
 
-@router.delete("/categories/{int:category_id}")
+@categories_router.delete("/{int:category_id}")
 def delete_category(request, category_id: int):
     """Delete a category."""
     category = get_object_or_404(Category, pk=category_id)
@@ -53,22 +56,30 @@ def delete_category(request, category_id: int):
     return {"success": True}
 
 
-# Product endpoints
-@router.get("/products", response=List[ProductSchema])
+@categories_router.get("/{int:category_id}/products", response=List[ProductSchema])
+def list_products_by_category(request, category_id: int):
+    """List products by category."""
+    category = get_object_or_404(Category, pk=category_id)
+    return (
+        Product.objects.select_related()
+        .prefetch_related("categories")
+        .filter(categories=category)
+    )
+
+
+# ============================================================================
+# Products Router
+# ============================================================================
+router = Router()
+
+
+@router.get("", response=List[ProductSchema])
 def list_products(request):
     """List all products."""
     return Product.objects.select_related().prefetch_related("categories").all()
 
 
-@router.get("/products/{int:product_id}", response=ProductSchema)
-def get_product(request, product_id: int):
-    """Get a single product by ID."""
-    return get_object_or_404(
-        Product.objects.select_related().prefetch_related("categories"), pk=product_id
-    )
-
-
-@router.post("/products", response=ProductSchema)
+@router.post("", response=ProductSchema)
 def create_product(request, payload: ProductCreateSchema):
     """Create a new product."""
     data = payload.dict()
@@ -80,7 +91,15 @@ def create_product(request, payload: ProductCreateSchema):
     return product
 
 
-@router.put("/products/{int:product_id}", response=ProductSchema)
+@router.get("/{int:product_id}", response=ProductSchema)
+def get_product(request, product_id: int):
+    """Get a single product by ID."""
+    return get_object_or_404(
+        Product.objects.select_related().prefetch_related("categories"), pk=product_id
+    )
+
+
+@router.put("/{int:product_id}", response=ProductSchema)
 def update_product(request, product_id: int, payload: ProductUpdateSchema):
     """Update an existing product."""
     product = get_object_or_404(Product, pk=product_id)
@@ -90,7 +109,7 @@ def update_product(request, product_id: int, payload: ProductUpdateSchema):
     return product
 
 
-@router.delete("/products/{int:product_id}")
+@router.delete("/{int:product_id}")
 def delete_product(request, product_id: int):
     """Delete a product."""
     product = get_object_or_404(Product, pk=product_id)
@@ -98,26 +117,20 @@ def delete_product(request, product_id: int):
     return {"success": True}
 
 
-@router.get("/categories/{int:category_id}/products", response=List[ProductSchema])
-def list_products_by_category(request, category_id: int):
-    """List products by category."""
-    category = get_object_or_404(Category, pk=category_id)
-    return (
-        Product.objects.select_related()
-        .prefetch_related("categories")
-        .filter(categories=category)
-    )
+# ============================================================================
+# Product Images Router (sub-router for nested resource)
+# ============================================================================
+images_router = Router()
 
 
-# ProductImage endpoints
-@router.get("/products/{int:product_id}/images", response=List[ProductImageSchema])
+@images_router.get("/{int:product_id}/images", response=List[ProductImageSchema])
 def list_product_images(request, product_id: int):
     """List all images for a product."""
     product = get_object_or_404(Product, pk=product_id)
     return product.images.all()
 
 
-@router.post("/products/{int:product_id}/images", response=ProductImageSchema)
+@images_router.post("/{int:product_id}/images", response=ProductImageSchema)
 def create_product_image(request, product_id: int, payload: ProductImageCreateSchema):
     """Add an image to a product."""
     product = get_object_or_404(Product, pk=product_id)
@@ -125,7 +138,7 @@ def create_product_image(request, product_id: int, payload: ProductImageCreateSc
     return image
 
 
-@router.put("/products/{int:product_id}/images/{int:image_id}", response=ProductImageSchema)
+@images_router.put("/{int:product_id}/images/{int:image_id}", response=ProductImageSchema)
 def update_product_image(request, product_id: int, image_id: int, payload: ProductImageCreateSchema):
     """Update a product image."""
     product = get_object_or_404(Product, pk=product_id)
@@ -136,7 +149,7 @@ def update_product_image(request, product_id: int, image_id: int, payload: Produ
     return image
 
 
-@router.delete("/products/{int:product_id}/images/{int:image_id}")
+@images_router.delete("/{int:product_id}/images/{int:image_id}")
 def delete_product_image(request, product_id: int, image_id: int):
     """Delete a product image."""
     product = get_object_or_404(Product, pk=product_id)
