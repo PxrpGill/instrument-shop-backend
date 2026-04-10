@@ -2,7 +2,11 @@ from ninja import NinjaAPI
 
 from apps.products.controllers import router as products_router
 
-api = NinjaAPI()
+api = NinjaAPI(
+    title="Instrument Shop API",
+    version="1.0.0",
+    description="REST API для интернет-магазина музыкальных инструментов",
+)
 
 api.add_router('/products/', products_router)
 
