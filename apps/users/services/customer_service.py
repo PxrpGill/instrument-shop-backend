@@ -35,6 +35,14 @@ class CustomerService:
         return Customer.objects.filter(id=customer_id).first()
 
     @staticmethod
+    def get_customer_with_roles(customer_id: str) -> Customer | None:
+        """Получение клиента с предзагрузкой ролей."""
+        return Customer.objects.prefetch_related('roles').filter(
+            id=customer_id,
+            is_active=True
+        ).first()
+
+    @staticmethod
     def authenticate(email: str, password: str) -> Customer | None:
         """Аутентификация клиента по email и паролю."""
         customer = CustomerService.get_customer_by_email(email)
@@ -53,11 +61,28 @@ class CustomerService:
 
     @staticmethod
     def generate_tokens(customer: Customer) -> dict:
-        """Генерация JWT токенов для клиента."""
+        """
+        Генерация JWT токенов для клиента с включением ролей и permissions.
+
+        Returns:
+            Словарь с access и refresh токенами
+        """
         refresh = RefreshToken()
+
+        # Базовые claims
         refresh['user_id'] = str(customer.id)
         refresh['email'] = customer.email
-        
+
+        # Добавляем роли и permissions в refresh токен
+        roles = list(customer.roles.filter(is_active=True).values_list('name', flat=True))
+        refresh['roles'] = roles
+
+        # Собираем все permissions
+        refresh['permissions'] = customer.get_permissions()
+
+        # Добавляем флаг is_admin для быстрой проверки
+        refresh['is_admin'] = customer.has_role('admin')
+
         return {
             'access': str(refresh.access_token),
             'refresh': str(refresh),

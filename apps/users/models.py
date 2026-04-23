@@ -3,6 +3,86 @@ from django.utils import timezone
 import uuid
 
 
+class Role(models.Model):
+    """
+    Модель роли для системы RBAC.
+    Определяет набор разрешений для определенной роли.
+    """
+
+    name = models.CharField(max_length=50, unique=True, db_index=True)
+    description = models.TextField(blank=True)
+    permissions = models.JSONField(
+        default=dict,
+        help_text="JSON object with permissions, e.g., {'create_product': true, 'edit_product': true}"
+    )
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'roles'
+        verbose_name = 'Role'
+        verbose_name_plural = 'Roles'
+        ordering = ['name']
+        indexes = [
+            models.Index(fields=['name']),
+            models.Index(fields=['is_active']),
+        ]
+
+    def __str__(self) -> str:
+        return self.name
+
+    def has_permission(self, permission: str) -> bool:
+        """Check if role has specific permission."""
+        if '*' in self.permissions:
+            return True
+        return self.permissions.get(permission, False)
+
+    def get_all_permissions(self) -> dict:
+        """Get all permissions for this role."""
+        return self.permissions.copy()
+
+
+class CustomerRole(models.Model):
+    """
+    Промежуточная модель для связи Customer и Role.
+    Отслеживает кто и когда назначил роль.
+    """
+
+    customer = models.ForeignKey(
+        'Customer',
+        on_delete=models.CASCADE,
+        related_name='customer_roles'
+    )
+    role = models.ForeignKey(
+        'Role',
+        on_delete=models.CASCADE,
+        related_name='role_customers'
+    )
+    assigned_at = models.DateTimeField(auto_now_add=True)
+    assigned_by = models.ForeignKey(
+        'Customer',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='assigned_customer_roles'
+    )
+
+    class Meta:
+        db_table = 'customer_roles'
+        verbose_name = 'Customer Role'
+        verbose_name_plural = 'Customer Roles'
+        unique_together = ['customer', 'role']
+        indexes = [
+            models.Index(fields=['customer']),
+            models.Index(fields=['role']),
+            models.Index(fields=['assigned_at']),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.customer.email} -> {self.role.name}"
+
+
 class Customer(models.Model):
     """
     Модель клиента магазина.
@@ -16,10 +96,19 @@ class Customer(models.Model):
     first_name = models.CharField(max_length=100, blank=True)
     last_name = models.CharField(max_length=100, blank=True)
     address = models.TextField(blank=True)
-    
+
     # Пароль (хранится в хешированном виде)
     password_hash = models.CharField(max_length=255)
-    
+
+    # Ролевая система
+    roles = models.ManyToManyField(
+        'Role',
+        through='CustomerRole',
+        through_fields=('customer', 'role'),
+        related_name='customers',
+        blank=True
+    )
+
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -49,3 +138,29 @@ class Customer(models.Model):
         """Обновляет время последнего входа."""
         self.last_login = timezone.now()
         self.save(update_fields=['last_login'])
+
+    def has_role(self, role_name: str) -> bool:
+        """Check if customer has specific role."""
+        return self.roles.filter(name=role_name, is_active=True).exists()
+
+    def has_permission(self, permission: str) -> bool:
+        """Check if customer has specific permission through any of their roles."""
+        for role in self.roles.filter(is_active=True).prefetch_related(None):
+            if role.has_permission(permission):
+                return True
+        return False
+
+    def get_roles(self):
+        """Get all roles for this customer."""
+        return self.roles.filter(is_active=True)
+
+    def get_permissions(self) -> dict:
+        """Get all permissions from all roles (combined)."""
+        permissions = {}
+        for role in self.roles.filter(is_active=True).prefetch_related(None):
+            for permission_name, is_allowed in role.get_all_permissions().items():
+                if permission_name == '*':
+                    permissions['*'] = bool(is_allowed)
+                    continue
+                permissions[permission_name] = permissions.get(permission_name, False) or bool(is_allowed)
+        return permissions

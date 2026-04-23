@@ -1,9 +1,8 @@
 from ninja import Router
 from django.http import HttpRequest
+from django.db import transaction
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
-from django.contrib.auth.hashers import check_password
-from typing import Any
 
 from .schemas import (
     CustomerRegisterRequest,
@@ -34,6 +33,7 @@ def get_customer_from_request(request: HttpRequest) -> Customer:
 
 
 @router.post("/register", response=TokenResponse, summary="Регистрация нового клиента")
+@transaction.atomic
 def register(request: CustomerRegisterRequest) -> TokenResponse:
     """
     Регистрация нового клиента.
@@ -41,7 +41,7 @@ def register(request: CustomerRegisterRequest) -> TokenResponse:
     """
     if CustomerService.email_exists(request.email):
         raise ValueError("Email уже зарегистрирован")
-    
+
     customer = CustomerService.create_customer(
         email=request.email,
         password=request.password,
@@ -49,10 +49,13 @@ def register(request: CustomerRegisterRequest) -> TokenResponse:
         first_name=request.first_name,
         last_name=request.last_name,
     )
-    
+
+    from apps.users.services.role_service import RoleService
+    RoleService.assign_role(customer, 'customer')
+
     tokens = CustomerService.generate_tokens(customer)
     customer.update_last_login()
-    
+
     return TokenResponse(
         access=tokens['access'],
         refresh=tokens['refresh'],
@@ -66,13 +69,13 @@ def login(request: CustomerLoginRequest) -> TokenResponse:
     Возвращает JWT токены для доступа к API.
     """
     customer = CustomerService.authenticate(request.email, request.password)
-    
+
     if not customer:
         raise ValueError("Неверный email или пароль")
-    
+
     tokens = CustomerService.generate_tokens(customer)
     customer.update_last_login()
-    
+
     return TokenResponse(
         access=tokens['access'],
         refresh=tokens['refresh'],
@@ -87,16 +90,16 @@ def refresh_token(request: TokenRefreshRequest) -> TokenResponse:
     try:
         refresh = RefreshToken(request.refresh)
         customer_id = refresh.get('user_id')
-        
+
         if not customer_id:
             raise ValueError("Невалидный токен")
-        
-        customer = CustomerService.get_customer_by_id(customer_id)
+
+        customer = CustomerService.get_customer_with_roles(customer_id)
         if not customer or not customer.is_active:
             raise ValueError("Пользователь не найден или неактивен")
-        
+
         tokens = CustomerService.generate_tokens(customer)
-        
+
         return TokenResponse(
             access=tokens['access'],
             refresh=tokens['refresh'],
@@ -112,7 +115,26 @@ def get_profile(request: HttpRequest) -> CustomerProfileResponse:
     Требуется JWT токен в заголовке Authorization.
     """
     customer = get_customer_from_request(request)
-    return customer
+
+    # Загружаем роли для возврата в ответе
+    roles = list(customer.roles.filter(is_active=True).values_list('name', flat=True))
+    permissions = customer.get_permissions()
+
+    # Создаем response с дополнительными полями
+    response = CustomerProfileResponse(
+        id=str(customer.id),
+        email=customer.email,
+        phone=customer.phone,
+        first_name=customer.first_name,
+        last_name=customer.last_name,
+        address=customer.address,
+        is_active=customer.is_active,
+        created_at=customer.created_at,
+        last_login=customer.last_login,
+        roles=roles,
+        permissions=permissions,
+    )
+    return response
 
 
 @router.patch("/me", response=CustomerProfileResponse, summary="Обновление профиля")
@@ -121,7 +143,7 @@ def update_profile(request: HttpRequest, data: CustomerUpdateRequest) -> Custome
     Обновление профиля текущего авторизованного клиента.
     """
     customer = get_customer_from_request(request)
-    
+
     updated = CustomerService.update_customer(
         customer=customer,
         phone=data.phone,
@@ -129,8 +151,24 @@ def update_profile(request: HttpRequest, data: CustomerUpdateRequest) -> Custome
         last_name=data.last_name,
         address=data.address,
     )
-    
-    return updated
+
+    # Возвращаем обновленный профиль
+    roles = list(updated.roles.filter(is_active=True).values_list('name', flat=True))
+    permissions = updated.get_permissions()
+
+    return CustomerProfileResponse(
+        id=str(updated.id),
+        email=updated.email,
+        phone=updated.phone,
+        first_name=updated.first_name,
+        last_name=updated.last_name,
+        address=updated.address,
+        is_active=updated.is_active,
+        created_at=updated.created_at,
+        last_login=updated.last_login,
+        roles=roles,
+        permissions=permissions,
+    )
 
 
 @router.post("/change-password", summary="Смена пароля")
@@ -139,14 +177,14 @@ def change_password(request: HttpRequest, data: ChangePasswordRequest) -> dict:
     Смена пароля текущего авторизованного клиента.
     """
     customer = get_customer_from_request(request)
-    
+
     success = CustomerService.change_password(
         customer,
         data.old_password,
         data.new_password,
     )
-    
+
     if not success:
         raise ValueError("Неверный текущий пароль")
-    
+
     return {"message": "Пароль успешно изменен"}

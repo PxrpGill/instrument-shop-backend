@@ -1,6 +1,7 @@
 from ninja import NinjaAPI
 
 from apps.users.api.controllers import router as customers_router
+from apps.users.api.role_controllers import router as admin_router
 from apps.products.controllers import router as products_router
 from apps.products.controllers import categories_router
 from apps.products.controllers import images_router
@@ -11,9 +12,15 @@ api = NinjaAPI(
     description="REST API для интернет-магазина музыкальных инструментов",
 )
 
+# Public/customer endpoints
 api.add_router('/v1/customers/', customers_router)
-api.add_router('/v1/categories/', categories_router)
+
+# Admin-only role management endpoints
+api.add_router('/v1/admin/', admin_router)
+
+# Products and categories
 api.add_router('/v1/products/', products_router)
+api.add_router('/v1/categories/', categories_router)
 api.add_router('/v1/products/', images_router)
 
 
