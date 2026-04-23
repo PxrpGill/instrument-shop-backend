@@ -122,6 +122,96 @@ python manage.py createsuperuser
 
 Admin panel available at: `http://127.0.0.1:8000/admin/`
 
+## Docker Setup
+
+Docker-файлы разделены по окружениям. Каждое окружение полностью независимо.
+
+### Структура
+
+```
+docker/
+├── shared/                    # Общие файлы
+│   ├── requirements.txt       # Зависимости
+│   └── .dockerignore          # Игнорирование при сборке
+├── dev/                       # Development
+│   ├── Dockerfile             # Образ с hot-reload
+│   ├── .env.example           # Пример переменных для dev
+│   ├── docker-compose.yml     # Конфигурация
+│   └── Makefile               # Команды
+└── prod/                      # Production
+    ├── Dockerfile             # Многоуровневый (builder → runtime)
+    ├── .env.example           # Пример переменных для prod
+    ├── docker-compose.yml     # Конфигурация
+    └── Makefile               # Команды
+```
+
+### Development (hot-reload)
+
+```bash
+cd docker/dev
+cp .env.example .env
+
+# Запуск
+make up
+
+# Логи
+make logs
+
+# Остановка
+make down
+
+# Миграции
+make migrate
+
+# Зайти в контейнер
+make shell
+```
+
+**Особенности dev:**
+- Django `runserver` со StatReloader (горячая перезагрузка)
+- Код монтируется как volume — изменения на хосте сразу применяются
+- Секреты и параметры БД читаются из `docker/dev/.env`
+- PostgreSQL с healthcheck (ждёт готовности БД перед стартом)
+
+### Production
+
+```bash
+cd docker/prod
+cp .env.example .env
+
+# Применить миграции
+make migrate
+
+# Запуск
+make up
+
+# Логи
+make logs
+
+# Остановка
+make down
+```
+
+**Особенности prod:**
+- `nginx` принимает внешний HTTP-трафик и проксирует запросы в Django
+- Gunicorn + Uvicorn workers (production-ready ASGI)
+- Многоуровневая сборка (builder → runtime)
+- Без volume-монтирования кода
+- `/static/` и `/media/` раздаются напрямую через `nginx`
+- Секреты и параметры БД читаются из `docker/prod/.env`
+- `web` не запускает миграции автоматически при старте
+
+### Healthchecks
+
+Оба окружения используют `depends_on` с `condition: service_healthy`.
+PostgreSQL проверяется через `pg_isready` перед стартом веба.
+
+### Переменные окружения
+
+- Реальные секреты хранятся в локальных `docker/dev/.env` и `docker/prod/.env`
+- Эти файлы исключены из git
+- В репозитории лежат только шаблоны `docker/dev/.env.example` и `docker/prod/.env.example`
+
 ## License
 
 MIT

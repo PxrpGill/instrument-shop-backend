@@ -49,6 +49,8 @@ Thumbs.db
 # Environment
 .env
 .env.local
+docker/dev/.env
+docker/prod/.env
 
 # Testing
 .pytest_cache/
