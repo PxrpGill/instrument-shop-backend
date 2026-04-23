@@ -1,0 +1,25 @@
+# Игнорируем всё из корня, кроме нужного
+.git
+.gitignore
+.db.sqlite3
+*.log
+*.pyc
+__pycache__/
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+ENV/
+env/
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+*.local
+.env*
+tests/
+test/
+*.test.py
+*_test.py
