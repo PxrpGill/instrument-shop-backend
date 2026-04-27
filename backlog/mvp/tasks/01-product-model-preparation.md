@@ -1,4 +1,4 @@
-# 01 Product Model Preparation
+# 01 Product Model Preparation ✅
 
 ### BE-001 Add product status field
 
