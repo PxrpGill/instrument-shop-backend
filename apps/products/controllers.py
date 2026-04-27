@@ -22,7 +22,7 @@ from .services import ProductPublicationError, ProductPublicationService
 # ============================================================================
 # Categories Router
 # ============================================================================
-categories_router = Router()
+categories_router = Router(tags=["Categories"])
 
 
 # Anyone with view_category permission can list/view categories
@@ -98,7 +98,7 @@ def list_products_by_category(request, category_id: int):
 # ============================================================================
 # Products Router
 # ============================================================================
-router = Router()
+router = Router(tags=["Products"])
 
 
 @router.get("", response=List[ProductSchema])
@@ -185,7 +185,7 @@ def delete_product(request, product_id: int):
 # ============================================================================
 # Product Images Router (sub-router for nested resource)
 # ============================================================================
-images_router = Router()
+images_router = Router(tags=["Product Images"])
 
 
 @images_router.get("/{int:product_id}/images", response=List[ProductImageSchema])

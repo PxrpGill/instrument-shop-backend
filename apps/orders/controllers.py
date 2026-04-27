@@ -22,7 +22,7 @@ from apps.users.constants import Permission, RoleName
 from core.auth.permissions import HasPermission, HasRoleMixin
 
 # Create router for orders
-router = Router()
+router = Router(tags=["Orders"])
 
 
 @router.post("", response=OrderResponseSchema)

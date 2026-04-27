@@ -13,7 +13,7 @@ from .schemas import PublicCategorySchema, PublicProductListSchema, PublicProduc
 # ============================================================================
 # Public Router
 # ============================================================================
-public_router = Router()
+public_router = Router(tags=["Public Storefront"])
 
 
 @public_router.get("/categories/", response=list[PublicCategorySchema])
