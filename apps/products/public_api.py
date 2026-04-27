@@ -8,8 +8,7 @@ from django.db.models import QuerySet
 from ninja import Query, Router
 
 from .models import Category, Product, ProductStatusChoices
-from .schemas import (PublicCategorySchema, PublicProductListSchema,
-                      PublicProductSchema)
+from .schemas import PublicCategorySchema, PublicProductListSchema, PublicProductSchema
 
 # ============================================================================
 # Public Router

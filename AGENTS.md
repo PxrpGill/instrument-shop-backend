@@ -51,12 +51,12 @@ docker-compose exec web python manage.py test
 
 ### Linting & Formatting
 ```bash
-docker-compose exec web black --check .
-docker-compose exec web black .
-docker-compose exec web isort --check-only .
-docker-compose exec web isort .
-docker-compose exec web flake8 .
-docker-compose exec web mypy .
+docker-compose exec web python -m black --check .
+docker-compose exec web python -m black .
+docker-compose exec web python -m isort --check-only .
+docker-compose exec web python -m isort .
+docker-compose exec web python -m flake8 .
+docker-compose exec web python -m mypy .
 docker-compose exec web python manage.py check
 ```
 
@@ -97,6 +97,7 @@ docker-compose exec web python manage.py showmigrations
 - API endpoints: `snake_case`
 - Descriptive names, avoid single letters
 - Booleans: `is_`, `has_`, `should_`
+
 ### Product Publication Rules
 Products can only be published through `POST /products/{id}/publish/`.
 Publication requires:
@@ -106,8 +107,8 @@ Publication requires:
 - At least one category
 Status cannot be changed via PUT or POST /products/, only via dedicated publish endpoint.
 
-### Django Guidelines
-#### Models
+## Django Guidelines
+### Models
 - `__str__` method
 - `Meta` for ordering/verbose names
 - `related_name` for ForeignKeys
@@ -115,7 +116,7 @@ Status cannot be changed via PUT or POST /products/, only via dedicated publish 
 - Model methods for model logic
 - Use `TimeStampedModel` abstract base for timestamps when needed
 
-#### APIs (Django Ninja)
+### APIs (Django Ninja)
 - Thin endpoints, delegate to services
 - Proper HTTP status codes
 - Pydantic schemas for validation
@@ -126,7 +127,7 @@ Status cannot be changed via PUT or POST /products/, only via dedicated publish 
 - Handle file uploads with `File` schema
 - Use query params for filtering/pagination
 
-#### Services
+### Services
 - Business logic layer
 - Single responsibility
 - Dependency injection when appropriate
@@ -134,7 +135,7 @@ Status cannot be changed via PUT or POST /products/, only via dedicated publish 
 - Return Django model instances or Pydantic models
 - Handle exceptions appropriately
 
-#### Validation
+### Validation
 - Django forms or Pydantic models
 - Keep validation near model
 - Reuse schemas across endpoints when possible
@@ -234,13 +235,120 @@ To use agents effectively in this repository:
 
 ### Best Practices
 - Always follow the project's code style guidelines
-- Run `black --check .` and `isort --check-only .` before considering work complete
+- Run `python -m black --check .` and `python -m isort --check-only .` before considering work complete
 - Test your changes with appropriate test commands
 - Keep changes focused and minimal
 - Update documentation when modifying public interfaces
 - Never hardcode secrets; use environment variables
 - When in doubt about an approach, examine similar existing code
 - Check conftest.py for available pytest fixtures before creating new ones
+
+### Common Pitfalls and Solutions (Lessons Learned)
+
+#### 1. JWT Token Generation for Custom User Models
+**Problem**: `RefreshToken.for_user()` only works with standard Django `User` model, NOT custom models like `Customer`.
+**Solution**: Use project's `CustomerService.generate_tokens(customer)` method instead.
+```python
+# WRONG:
+tokens = RefreshToken.for_user(customer)
+access = str(tokens.access_token)
+
+# CORRECT:
+from apps.users.services.customer_service import CustomerService
+tokens = CustomerService.generate_tokens(customer)
+access = tokens["access"]  # Note: use standard quotes
+```
+
+#### 2. Ninja TestClient Request Syntax
+**Problem**: TestClient doesn't accept `HTTP_AUTHORIZATION` parameter like Django's test client.
+**Solution**: Use `headers=` parameter with dictionary format.
+```python
+# WRONG:
+response = client.get(url, HTTP_AUTHORIZATION=f'Bearer {access}')
+
+# CORRECT:
+response = client.get(url, headers={"Authorization": f"Bearer {access}"})
+
+# For POST/PUT with JSON:
+response = client.post(url, json={...}, headers={"Authorization": f"Bearer {access}"})
+```
+
+#### 3. API Path Trailing Slashes
+**Problem**: Django Ninja resolves paths exactly. Having trailing slash in test but not in router causes "Cannot resolve" error.
+**Solution**: Paths in tests must match router definition exactly (usually without trailing slash).
+```python
+# Router definition:
+@router.get("/products/{int:product_id}")
+
+# Test call - WRONG (trailing slash):
+client.get(f'/v1/products/{product.id}/')
+
+# Test call - CORRECT:
+client.get(f'/v1/products/{product.id}')
+```
+
+#### 4. Schema Validation - Missing Required Fields
+**Problem**: Pydantic schema validation returns 422 if required fields are missing.
+**Solution**: Check schema definition and include all required fields in test requests.
+```python
+# ProductCreateSchema requires: name, price, availability (at minimum)
+response = client.post('/v1/products/', json={
+    "name": "Test Product",
+    "price": "100.00",
+    "availability": "in_stock",  # Required field!
+    "brand": "TestBrand"      # May also be required
+}, headers=headers)
+```
+
+#### 5. Python String Quotes - Use ASCII Quotes
+**Problem**: Copy-pasting code may introduce non-ASCII quotes (`"`'`) instead of standard ASCII quotes (`"'`).
+**Solution**: Always use standard ASCII quotes in Python code.
+```python
+# WRONG (non-ASCII quotes):
+tokens = CustomerService.generate_tokens(customer)
+return tokens['access']  # This will cause SyntaxError
+
+# CORRECT:
+tokens = CustomerService.generate_tokens(customer)
+return tokens["access"]  # Standard ASCII quotes
+```
+
+#### 6. Pytest Fixtures - Proper Definition and Usage
+**Problem**: Fixtures defined in `conftest.py` must be used correctly in test methods.
+**Solution**: 
+- Define fixture factory functions that return functions
+- Use fixture as function with parentheses
+```python
+# conftest.py - WRONG:
+@pytest.fixture
+def get_token_for_customer():
+    def _get_token(customer):
+        tokens = CustomerService.generate_tokens(customer)
+        return tokens["access"]
+    return _get_token  # Returns function, not token
+
+# conftest.py - CORRECT:
+@pytest.fixture
+def auth_headers():
+    """Return a function that generates auth headers for a customer."""
+    def _get_headers(customer):
+        tokens = CustomerService.generate_tokens(customer)
+        access = tokens["access"]
+        return {"Authorization": f"Bearer {access}"}
+    return _get_headers
+
+# In test - usage:
+def test_something(self, auth_headers):
+    headers = auth_headers(customer)  # Call the fixture function
+    response = client.get('/v1/products', headers=headers)
+```
+
+#### 7. Test Database Already Exists Error
+**Problem**: Running tests fails with "duplicate key value violates unique constraint" for test database.
+**Solution**: Use `--reuse-db` flag or drop existing test database.
+```bash
+docker-compose exec web python -m pytest apps/products/tests/ --reuse-db
+```
 
 ### Automatic Agent Invocation for Backlog Tasks
 
@@ -284,3 +392,33 @@ When working on backlog tasks, automatically determine and invoke the appropriat
 3. Make small, incremental changes
 4. Run tests frequently to ensure behavior is preserved
 5. Update any affected documentation
+
+## Task Context Summary
+
+### Completed Tasks:
+1. **Task 06 (RBAC Hardening)**:
+   - BE-019: Created `apps/users/constants.py` with centralized permission/role constants
+   - BE-020: Created migration `0004_update_roles_to_catalog_manager.py` (renamed `manager` → `catalog_manager`)
+   - Updated all controllers, services, and tests to use constants
+
+2. **Task 05 (Internal Catalog API Refinement)** ✅ **Review Fixed**:
+   - BE-016: Separated public API (`public_api.py`) from internal API (`controllers.py`)
+   - BE-017: Staff can change product status via `/products/{id}/publish/` endpoint
+   - BE-018: Staff can manage product `availability` field via update endpoint
+   - **Review fixes applied**:
+     - Fixed public API returning internal fields (created `PublicProductImageSchema`, updated `PublicProductSchema` and `PublicProductListSchema` to use `PublicCategorySchema` and `PublicProductImageSchema`)
+     - Fixed price=0 validation in `ProductPublicationService.get_publication_errors()` (changed `if not value` to explicit `None` and empty string checks)
+     - Fixed permission check in `publish_product` endpoint (`EDIT_PRODUCT` → `PUBLISH_PRODUCT`)
+   - **Tests**: 27/27 tests passing, added tests for all 3 review scenarios
+
+3. **Task 04 (Public Catalog API)** ✅:
+   - BE-011: Created public categories list endpoint (no auth required, returns `id`, `name`, `slug` only)
+   - BE-012: Created public products list endpoint (returns only `published` products, supports pagination)
+   - BE-013: Created public product detail endpoint (returns only `published` products with categories and images)
+   - BE-014: Added category filter to public product list (`category_id` and `category_slug` query params)
+   - BE-015: Added product name search to public product list (`search` query param with `icontains`)
+   - **Implementation**: All public endpoints in `apps/products/public_api.py` using `PublicProductSchema`, `PublicProductListSchema`, `PublicCategorySchema`
+
+### Known Issues:
+- All tests now passing after review fixes
+- Code formatted with Black and isort

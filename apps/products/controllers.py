@@ -1,32 +1,36 @@
-from django.shortcuts import get_object_or_404
-from ninja import Router
 from typing import List
 
-from core.auth.permissions import HasPermission, HasRoleMixin, IsAuthenticated
+from django.shortcuts import get_object_or_404
+from ninja import Router
+
 from apps.users.api.controllers import get_customer_from_request
+from apps.users.constants import Permission
+from core.auth.permissions import HasPermission, HasRoleMixin, IsAuthenticated
+
 from .models import Category, Product, ProductImage, ProductStatusChoices
 from .schemas import (
-    CategorySchema,
     CategoryCreateSchema,
-    ProductSchema,
+    CategorySchema,
     ProductCreateSchema,
-    ProductUpdateSchema,
-    ProductImageSchema,
     ProductImageCreateSchema,
+    ProductImageSchema,
+    ProductSchema,
+    ProductUpdateSchema,
 )
-from .services import ProductPublicationService, ProductPublicationError
+from .services import ProductPublicationError, ProductPublicationService
 
 # ============================================================================
 # Categories Router
 # ============================================================================
 categories_router = Router()
 
+
 # Anyone with view_category permission can list/view categories
 @categories_router.get("", response=List[CategorySchema])
 def list_categories(request):
     """List all categories. Requires view_category permission."""
     customer = get_customer_from_request(request)
-    HasRoleMixin.require_permission(customer, 'view_category')
+    HasRoleMixin.require_permission(customer, Permission.VIEW_CATEGORY)
     return Category.objects.all()
 
 
@@ -37,7 +41,7 @@ def create_category(request, payload: CategoryCreateSchema):
     Requires create_category permission (admin/manager).
     """
     customer = get_customer_from_request(request)
-    HasRoleMixin.require_permission(customer, 'create_category')
+    HasRoleMixin.require_permission(customer, Permission.CREATE_CATEGORY)
     category = Category.objects.create(**payload.dict())
     return category
 
@@ -46,7 +50,7 @@ def create_category(request, payload: CategoryCreateSchema):
 def get_category(request, category_id: int):
     """Get a single category by ID. Requires view_category permission."""
     customer = get_customer_from_request(request)
-    HasRoleMixin.require_permission(customer, 'view_category')
+    HasRoleMixin.require_permission(customer, Permission.VIEW_CATEGORY)
     return get_object_or_404(Category, pk=category_id)
 
 
@@ -57,7 +61,7 @@ def update_category(request, category_id: int, payload: CategoryCreateSchema):
     Requires edit_category permission (admin/manager).
     """
     customer = get_customer_from_request(request)
-    HasRoleMixin.require_permission(customer, 'edit_category')
+    HasRoleMixin.require_permission(customer, Permission.EDIT_CATEGORY)
     category = get_object_or_404(Category, pk=category_id)
     for key, value in payload.dict().items():
         setattr(category, key, value)
@@ -72,7 +76,7 @@ def delete_category(request, category_id: int):
     Requires delete_category permission (admin only typically).
     """
     customer = get_customer_from_request(request)
-    HasRoleMixin.require_permission(customer, 'delete_category')
+    HasRoleMixin.require_permission(customer, Permission.DELETE_CATEGORY)
     category = get_object_or_404(Category, pk=category_id)
     category.delete()
     return {"success": True}
@@ -82,7 +86,7 @@ def delete_category(request, category_id: int):
 def list_products_by_category(request, category_id: int):
     """List products by category. Requires view_product permission."""
     customer = get_customer_from_request(request)
-    HasRoleMixin.require_permission(customer, 'view_product')
+    HasRoleMixin.require_permission(customer, Permission.VIEW_PRODUCT)
     category = get_object_or_404(Category, pk=category_id)
     return (
         Product.objects.select_related()
@@ -101,7 +105,7 @@ router = Router()
 def list_products(request):
     """List all products. Requires view_product permission."""
     customer = get_customer_from_request(request)
-    HasRoleMixin.require_permission(customer, 'view_product')
+    HasRoleMixin.require_permission(customer, Permission.VIEW_PRODUCT)
     return Product.objects.select_related().prefetch_related("categories").all()
 
 
@@ -112,7 +116,7 @@ def create_product(request, payload: ProductCreateSchema):
     Requires create_product permission (admin/manager).
     """
     customer = get_customer_from_request(request)
-    HasRoleMixin.require_permission(customer, 'create_product')
+    HasRoleMixin.require_permission(customer, Permission.CREATE_PRODUCT)
     data = payload.dict()
     category_ids = data.pop("category_ids", [])
     product = Product.objects.create(**data)
@@ -126,7 +130,7 @@ def create_product(request, payload: ProductCreateSchema):
 def get_product(request, product_id: int):
     """Get a single product by ID. Requires view_product permission."""
     customer = get_customer_from_request(request)
-    HasRoleMixin.require_permission(customer, 'view_product')
+    HasRoleMixin.require_permission(customer, Permission.VIEW_PRODUCT)
     return get_object_or_404(
         Product.objects.select_related().prefetch_related("categories"), pk=product_id
     )
@@ -139,7 +143,7 @@ def update_product(request, product_id: int, payload: ProductUpdateSchema):
     Requires edit_product permission (admin/manager).
     """
     customer = get_customer_from_request(request)
-    HasRoleMixin.require_permission(customer, 'edit_product')
+    HasRoleMixin.require_permission(customer, Permission.EDIT_PRODUCT)
     product = get_object_or_404(Product, pk=product_id)
     for key, value in payload.dict().items():
         setattr(product, key, value)
@@ -151,11 +155,11 @@ def update_product(request, product_id: int, payload: ProductUpdateSchema):
 def publish_product(request, product_id: int):
     """
     Publish a product.
-    Requires edit_product permission (admin/manager).
+    Requires publish_product permission (admin/catalog_manager).
     Validates publication readiness (name, price, image, category).
     """
     customer = get_customer_from_request(request)
-    HasRoleMixin.require_permission(customer, 'edit_product')
+    HasRoleMixin.require_permission(customer, Permission.PUBLISH_PRODUCT)
     product = get_object_or_404(Product, pk=product_id)
     errors = ProductPublicationService.get_publication_errors(product)
     if errors:
@@ -172,7 +176,7 @@ def delete_product(request, product_id: int):
     Requires delete_product permission (admin only).
     """
     customer = get_customer_from_request(request)
-    HasRoleMixin.require_permission(customer, 'delete_product')
+    HasRoleMixin.require_permission(customer, Permission.DELETE_PRODUCT)
     product = get_object_or_404(Product, pk=product_id)
     product.delete()
     return {"success": True}
@@ -188,7 +192,7 @@ images_router = Router()
 def list_product_images(request, product_id: int):
     """List all images for a product. Requires view_product permission."""
     customer = get_customer_from_request(request)
-    HasRoleMixin.require_permission(customer, 'view_product')
+    HasRoleMixin.require_permission(customer, Permission.VIEW_PRODUCT)
     product = get_object_or_404(Product, pk=product_id)
     return product.images.all()
 
@@ -200,20 +204,24 @@ def create_product_image(request, product_id: int, payload: ProductImageCreateSc
     Requires edit_product permission (admin/manager).
     """
     customer = get_customer_from_request(request)
-    HasRoleMixin.require_permission(customer, 'edit_product')
+    HasRoleMixin.require_permission(customer, Permission.EDIT_PRODUCT)
     product = get_object_or_404(Product, pk=product_id)
     image = ProductImage.objects.create(product=product, **payload.dict())
     return image
 
 
-@images_router.put("/{int:product_id}/images/{int:image_id}", response=ProductImageSchema)
-def update_product_image(request, product_id: int, image_id: int, payload: ProductImageCreateSchema):
+@images_router.put(
+    "/{int:product_id}/images/{int:image_id}", response=ProductImageSchema
+)
+def update_product_image(
+    request, product_id: int, image_id: int, payload: ProductImageCreateSchema
+):
     """
     Update a product image.
     Requires edit_product permission (admin/manager).
     """
     customer = get_customer_from_request(request)
-    HasRoleMixin.require_permission(customer, 'edit_product')
+    HasRoleMixin.require_permission(customer, Permission.EDIT_PRODUCT)
     product = get_object_or_404(Product, pk=product_id)
     image = get_object_or_404(ProductImage, pk=image_id, product=product)
     for key, value in payload.dict().items():
@@ -229,7 +237,7 @@ def delete_product_image(request, product_id: int, image_id: int):
     Requires edit_product permission (admin/manager).
     """
     customer = get_customer_from_request(request)
-    HasRoleMixin.require_permission(customer, 'edit_product')
+    HasRoleMixin.require_permission(customer, Permission.EDIT_PRODUCT)
     product = get_object_or_404(Product, pk=product_id)
     image = get_object_or_404(ProductImage, pk=image_id, product=product)
     image.delete()

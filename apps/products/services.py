@@ -46,7 +46,11 @@ class ProductPublicationService:
 
         for field in cls.REQUIRED_FIELDS:
             value = getattr(product, field, None)
-            if not value:
+            # Check if value is None (not set)
+            if value is None:
+                errors.append(f"Field '{field}' is required for publication")
+            # For string fields, also check for empty string
+            elif isinstance(value, str) and value.strip() == "":
                 errors.append(f"Field '{field}' is required for publication")
 
         if not product.images.exists():

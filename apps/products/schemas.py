@@ -2,8 +2,13 @@ from typing import Optional
 
 from ninja import ModelSchema
 
-from .models import (Category, Product, ProductAvailabilityChoices,
-                     ProductImage, ProductStatusChoices)
+from .models import (
+    Category,
+    Product,
+    ProductAvailabilityChoices,
+    ProductImage,
+    ProductStatusChoices,
+)
 
 
 class CategorySchema(ModelSchema):
@@ -28,6 +33,14 @@ class PublicCategorySchema(ModelSchema):
     class Meta:
         model = Category
         fields = ["id", "name", "slug"]
+
+
+class PublicProductImageSchema(ModelSchema):
+    """Public schema for ProductImage (storefront only)."""
+
+    class Meta:
+        model = ProductImage
+        fields = ["id", "image", "alt_text", "is_primary"]
 
 
 class ProductImageSchema(ModelSchema):
@@ -107,8 +120,8 @@ class ProductUpdateSchema(ModelSchema):
 class PublicProductSchema(ModelSchema):
     """Public schema for Product (storefront only)."""
 
-    categories: Optional[list[CategorySchema]] = []
-    images: Optional[list[ProductImageSchema]] = []
+    categories: Optional[list[PublicCategorySchema]] = []
+    images: Optional[list[PublicProductImageSchema]] = []
 
     class Meta:
         model = Product
@@ -127,7 +140,7 @@ class PublicProductSchema(ModelSchema):
 class PublicProductListSchema(ModelSchema):
     """Public schema for Product list (minimal data, no images for list view)."""
 
-    categories: Optional[list[CategorySchema]] = []
+    categories: Optional[list[PublicCategorySchema]] = []
 
     class Meta:
         model = Product
