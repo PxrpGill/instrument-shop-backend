@@ -65,6 +65,23 @@ conftest.py       # Pytest fixtures
 - select_related / prefetch_related for optimization
 - transaction.atomic() for multi-entity writes
 
+## Backlog Progress
+
+**Завершённые:**
+- ✅ `01-product-model-preparation` — добавлены поля status, availability, sku, brand + схемы API
+
+**В работе:**
+- 📋 `02-publication-rules` — правила публикации товаров
+- 📋 `03-product-images-rules` — правила изображений товаров
+- 📋 `04-public-catalog-api` — публичный API каталога
+- 📋 `05-internal-catalog-api-refinement` — доработка internal API
+- 📋 `06-rbac-hardening` — усиление RBAC
+- 📋 `07-order-domain` — домен заказов
+- 📋 `08-customer-order-api` — API заказов для клиентов
+- 📋 `09-staff-order-api` — API заказов для staff
+- 📋 `10-tests` — тесты
+- 📋 `11-suggested-execution-order` — порядок выполнения
+
 ## Backlog Processing
 Автоматическая обработка задач из `backlog/mvp/tasks/`:
 1. Читаю файл задачи
