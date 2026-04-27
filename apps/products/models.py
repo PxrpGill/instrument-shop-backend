@@ -33,6 +33,22 @@ class Category(TimeStampedModel):
         super().save(*args, **kwargs)
 
 
+class ProductStatusChoices(models.TextChoices):
+    """Product status choices."""
+
+    DRAFT = "draft", "Draft"
+    PUBLISHED = "published", "Published"
+    ARCHIVED = "archived", "Archived"
+
+
+class ProductAvailabilityChoices(models.TextChoices):
+    """Product availability choices."""
+
+    IN_STOCK = "in_stock", "In Stock"
+    OUT_OF_STOCK = "out_of_stock", "Out of Stock"
+    ON_REQUEST = "on_request", "On Request"
+
+
 class Product(TimeStampedModel):
     """Product model with flexible parameters."""
 
@@ -48,6 +64,30 @@ class Product(TimeStampedModel):
         Category,
         related_name="products",
         blank=True,
+    )
+    sku = models.CharField(
+        max_length=100,
+        unique=True,
+        blank=True,
+        null=True,
+        help_text="Stock keeping unit ( SKU)",
+    )
+    brand = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Product brand",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=ProductStatusChoices.choices,
+        default=ProductStatusChoices.DRAFT,
+        help_text="Product status: draft, published, archived",
+    )
+    availability = models.CharField(
+        max_length=20,
+        choices=ProductAvailabilityChoices.choices,
+        default=ProductAvailabilityChoices.IN_STOCK,
+        help_text="Product availability: in_stock, out_of_stock, on_request",
     )
 
     class Meta:
@@ -68,8 +108,12 @@ class ProductImage(TimeStampedModel):
         related_name="images",
     )
     image = models.ImageField(upload_to="products/")
-    alt_text = models.CharField(max_length=255, blank=True, help_text="Alternative text for the image")
-    is_primary = models.BooleanField(default=False, help_text="Set as primary image for the product")
+    alt_text = models.CharField(
+        max_length=255, blank=True, help_text="Alternative text for the image"
+    )
+    is_primary = models.BooleanField(
+        default=False, help_text="Set as primary image for the product"
+    )
 
     class Meta:
         verbose_name = "Product Image"

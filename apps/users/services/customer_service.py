@@ -1,5 +1,7 @@
 from django.contrib.auth.hashers import check_password, make_password
 from rest_framework_simplejwt.tokens import RefreshToken
+from typing import Optional
+
 from apps.users.models import Customer
 
 
@@ -25,17 +27,17 @@ class CustomerService:
         )
 
     @staticmethod
-    def get_customer_by_email(email: str) -> Customer | None:
+    def get_customer_by_email(email: str) -> Optional[Customer]:
         """Получение клиента по email."""
         return Customer.objects.filter(email__iexact=email).first()
 
     @staticmethod
-    def get_customer_by_id(customer_id: str) -> Customer | None:
+    def get_customer_by_id(customer_id: str) -> Optional[Customer]:
         """Получение клиента по ID."""
         return Customer.objects.filter(id=customer_id).first()
 
     @staticmethod
-    def get_customer_with_roles(customer_id: str) -> Customer | None:
+    def get_customer_with_roles(customer_id: str) -> Optional[Customer]:
         """Получение клиента с предзагрузкой ролей."""
         return Customer.objects.prefetch_related('roles').filter(
             id=customer_id,
@@ -43,7 +45,7 @@ class CustomerService:
         ).first()
 
     @staticmethod
-    def authenticate(email: str, password: str) -> Customer | None:
+    def authenticate(email: str, password: str) -> Optional[Customer]:
         """Аутентификация клиента по email и паролю."""
         customer = CustomerService.get_customer_by_email(email)
         if not customer:

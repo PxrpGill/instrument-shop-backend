@@ -245,6 +245,26 @@ To use agents effectively in this repository:
 - When in doubt about an approach, examine similar existing code
 - Check conftest.py for available pytest fixtures before creating new ones
 
+### Automatic Agent Invocation for Backlog Tasks
+
+When working on backlog tasks, automatically determine and invoke the appropriate subagent:
+
+1. **Read the task file** from `backlog/mvp/tasks/` directory
+2. **Analyze content** to determine task type:
+   - `model`, `migration`, `schema`, `field`, `database` → `database-normalization-architect`
+   - `controller`, `api`, `endpoint`, `service`, `view` → `senior-backend-django-ninja`
+   - `test`, `pytest`, `testing`, `coverage` → `senior-python-tester`
+   - `docker`, `ci`, `cd`, `deployment`, `infrastructure` → `senior-devops`
+   - `commit`, `git`, `pr`, `pull request` → `git-commit`
+   - Code exploration/research (no code changes) → `explore`
+
+3. **Invoke the agent** with detailed prompt containing:
+   - Full task content from the backlog file
+   - Expected deliverable
+   - Reference to project code style from this file
+
+4. **Execute and verify** when agent completes
+
 ### Common Workflows
 **Adding a new feature:**
 1. Read relevant models, services, and API files
