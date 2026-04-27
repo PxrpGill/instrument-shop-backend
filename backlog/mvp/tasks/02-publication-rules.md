@@ -1,4 +1,4 @@
-# 02 Publication Rules
+# 02 Publication Rules ✅
 
 ### BE-006 Define publishable product rules in code
 
