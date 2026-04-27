@@ -18,7 +18,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='product',
             name='brand',
-            field=models.CharField(blank=True, help_text='Product brand', max_length=255),
+            field=models.CharField(blank=True, default='', help_text='Product brand', max_length=255),
         ),
         migrations.AddField(
             model_name='product',
