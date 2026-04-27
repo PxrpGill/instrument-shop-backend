@@ -91,9 +91,7 @@ class OrderService:
             return order
 
     @classmethod
-    def _validate_and_get_products(
-        cls, product_ids: list[int]
-    ) -> dict[int, Product]:
+    def _validate_and_get_products(cls, product_ids: list[int]) -> dict[int, Product]:
         """
         Validate that all products exist and are published.
 
@@ -126,7 +124,9 @@ class OrderService:
             )
 
         # Check all products are published
-        non_published = [p for p in products if p.status != ProductStatusChoices.PUBLISHED]
+        non_published = [
+            p for p in products if p.status != ProductStatusChoices.PUBLISHED
+        ]
         if non_published:
             non_published_ids = [p.id for p in non_published]
             non_published_names = [p.name for p in non_published]
@@ -168,7 +168,9 @@ class OrderService:
         for item in items:
             if item.quantity < 1:
                 raise OrderCreationError(
-                    {"quantity": f"Quantity must be at least 1 for product {item.product_id}"}
+                    {
+                        "quantity": f"Quantity must be at least 1 for product {item.product_id}"
+                    }
                 )
 
     @classmethod

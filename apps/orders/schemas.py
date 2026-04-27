@@ -162,6 +162,36 @@ class OrderListResponseSchema(BaseModel):
 
 
 class OrderStatusUpdateSchema(BaseModel):
-    """Schema for updating order status (staff only)."""
+    """
+    Schema for updating order status (staff only).
 
-    status: OrderStatusChoices = Field(..., description="New order status")
+    BE-030: Limit the set of allowable statuses.
+    Only processing, confirmed, cancelled, and completed are allowed.
+    """
+
+    status: OrderStatusChoices = Field(
+        ...,
+        description="New order status (processing, confirmed, cancelled, completed only)",
+    )
+
+    @model_validator(mode="before")
+    @classmethod
+    def validate_status(cls, data):
+        """
+        Validate that only allowed statuses can be set.
+
+        BE-030: Reject status values that are not in the allowed list.
+        """
+        if isinstance(data, dict) and "status" in data:
+            allowed_statuses = {
+                OrderStatusChoices.PROCESSING,
+                OrderStatusChoices.CONFIRMED,
+                OrderStatusChoices.CANCELLED,
+                OrderStatusChoices.COMPLETED,
+            }
+            if data["status"] not in allowed_statuses:
+                raise ValueError(
+                    f"Invalid status. Allowed values: "
+                    f"{', '.join(s.value for s in allowed_statuses)}"
+                )
+        return data

@@ -47,6 +47,7 @@ def create_order(request, payload: OrderCreateSchema):
     except OrderCreationError as e:
         # Return 400 with validation errors
         from ninja.errors import HttpError
+
         raise HttpError(400, str(e.errors))
 
 
@@ -56,28 +57,26 @@ def list_orders(
     status: Optional[str] = None,
 ):
     """
-    List orders for the authenticated customer.
+    List orders (staff only).
 
-    Customers can only see their own orders.
     Staff users (admin/catalog_manager) can see all orders.
+    Customers and guests are denied access.
 
     Filter by status using query parameter: ?status=new
     """
     customer = get_customer_from_request(request)
 
-    # Check if user is staff (admin or catalog_manager)
-    is_staff = customer.has_role(RoleName.ADMIN) or customer.has_role(RoleName.CATALOG_MANAGER)
+    # Only staff can list orders (BE-028: customer or guest access should not be granted)
+    has_permission = customer.has_role(RoleName.ADMIN) or customer.has_role(
+        RoleName.CATALOG_MANAGER
+    )
+    if not has_permission:
+        from ninja.errors import HttpError
 
-    if is_staff:
-        # Staff can see all orders
-        queryset = Order.objects.select_related("customer").prefetch_related("items").all()
-    else:
-        # Customers only see their own orders
-        queryset = (
-            Order.objects.select_related("customer")
-            .prefetch_related("items")
-            .filter(customer=customer)
-        )
+        raise HttpError(403, "Access denied. Staff only.")
+
+    # Staff can see all orders
+    queryset = Order.objects.select_related("customer").prefetch_related("items").all()
 
     # Filter by status if provided
     if status:
@@ -97,10 +96,16 @@ def get_order(request, order_id: int):
     customer = get_customer_from_request(request)
 
     # Try to get the order
-    order = Order.objects.select_related("customer").prefetch_related("items").filter(pk=order_id).first()
+    order = (
+        Order.objects.select_related("customer")
+        .prefetch_related("items")
+        .filter(pk=order_id)
+        .first()
+    )
 
     if not order:
         from django.shortcuts import get_object_or_404
+
         get_object_or_404(Order, pk=order_id)  # This will raise 404
 
     # Check permissions
@@ -108,9 +113,12 @@ def get_order(request, order_id: int):
         # Not the order owner - check if staff can view
         # Staff check: user must have view_order permission AND not be a regular customer
         # Admin always can, catalog_manager can (they have view_customer permission)
-        is_staff = customer.has_role(RoleName.ADMIN) or customer.has_role(RoleName.CATALOG_MANAGER)
+        is_staff = customer.has_role(RoleName.ADMIN) or customer.has_role(
+            RoleName.CATALOG_MANAGER
+        )
         if not is_staff:
             from ninja.errors import HttpError
+
             raise HttpError(404, "Order not found")
 
     return order
@@ -126,10 +134,16 @@ def cancel_order(request, order_id: int):
     """
     customer = get_customer_from_request(request)
 
-    order = Order.objects.select_related("customer").prefetch_related("items").filter(pk=order_id).first()
+    order = (
+        Order.objects.select_related("customer")
+        .prefetch_related("items")
+        .filter(pk=order_id)
+        .first()
+    )
 
     if not order:
         from django.shortcuts import get_object_or_404
+
         get_object_or_404(Order, pk=order_id)
 
     # Check if customer can cancel this order
@@ -141,6 +155,7 @@ def cancel_order(request, order_id: int):
         # Check if order can be cancelled
         if not OrderService.can_cancel_order(order):
             from ninja.errors import HttpError
+
             raise HttpError(400, f"Order cannot be cancelled in status: {order.status}")
 
     # Cancel the order
@@ -164,10 +179,16 @@ def update_order_status(request, order_id: int, payload: OrderStatusUpdateSchema
     customer = get_customer_from_request(request)
     HasRoleMixin.require_permission(customer, Permission.MANAGE_ORDER_STATUS)
 
-    order = Order.objects.select_related("customer").prefetch_related("items").filter(pk=order_id).first()
+    order = (
+        Order.objects.select_related("customer")
+        .prefetch_related("items")
+        .filter(pk=order_id)
+        .first()
+    )
 
     if not order:
         from django.shortcuts import get_object_or_404
+
         get_object_or_404(Order, pk=order_id)
 
     # Update status

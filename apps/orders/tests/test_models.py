@@ -5,8 +5,8 @@ Tests for order models.
 from decimal import Decimal
 
 import pytest
-from django.db.models.deletion import ProtectedError
 from django.core.exceptions import ValidationError
+from django.db.models.deletion import ProtectedError
 
 from apps.orders.models import Order, OrderItem, OrderStatusChoices
 

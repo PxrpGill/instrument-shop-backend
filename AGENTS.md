@@ -483,24 +483,36 @@ When working on backlog tasks, automatically determine and invoke the appropriat
    - **Files created**:
      - `apps/orders/services.py` - Business logic with race condition protection
      - `apps/orders/controllers.py` - API endpoints (create, list, get, cancel, update status)
-     - `apps/orders/tests/test_api.py` - 20 tests for BE-025, BE-026, BE-027
+     - `apps/orders/tests/test_api.py` - 36 tests total (for BE-025, BE-026, BE-027 + cancel endpoint)
+     - `apps/orders/tests/test_schemas.py` - 15 tests for schema validation
      - `apps/users/migrations/0006_add_create_order_permission.py` - Adds `create_order` permission to customer role
    - **API Endpoints**:
      - `POST /v1/orders/` - Create order (customers)
-     - `GET /v1/orders/` - List orders (own/all depending on role)
+     - `GET /v1/orders/` - List orders (**staff-only**, BE-028)
      - `GET /v1/orders/{id}` - Get single order
      - `POST /v1/orders/{id}/cancel` - Cancel order
-     - `PUT /v1/orders/{id}/status` - Update status (staff only)
+     - `PUT /v1/orders/{id}/status` - Update status (staff only, restricted to allowed statuses BE-030)
+
+6. **Task 09 (Staff Order API)** ✅ **Completed** (Fixed per review findings):
+   - BE-028: Staff orders list endpoint - **FIXED**: Now strictly staff-only (customers get 403)
+     - Updated `list_orders` endpoint to deny customer/guest access
+     - Added tests: `test_customer_cannot_list_orders`, `test_guest_cannot_list_orders`
+   - BE-029: Staff order detail endpoint - Working correctly (staff can view any order)
+   - BE-030: Order status update endpoint - **FIXED**: Restricted allowable statuses
+     - Updated `OrderStatusUpdateSchema` to only allow: `processing`, `confirmed`, `cancelled`, `completed`
+     - Added validator to reject `new` status and invalid values
+     - Added tests: `test_allowed_statuses_valid`, `test_new_status_rejected`
+   - **Migration created**: `apps/users/migrations/0007_add_order_permissions_to_catalog_manager.py`
+     - Adds `view_order`, `cancel_order`, `manage_order_status` permissions to `catalog_manager` role
+   - **Total tests**: 36 in test_api.py + 15 in test_schemas.py = 51 order-related tests
 
 ### Known Issues:
-- All tests now passing (**160 tests**: 78 products + 42 orders + 30 users + 10 others)
+- All tests now passing (**177 tests** total)
 - Code formatted with Black and isort
 - NOTE: `core/tests/test_permissions.py` has import error (`Request` from `ninja` not found) - pre-existing issue unrelated to recent changes
 - **Resolved**: Race condition in order creation now fixed with `select_for_update()` inside `transaction.atomic()`
 - **Resolved**: `create_order` permission now added via migration `0006_add_create_order_permission.py`
+- **Resolved**: `catalog_manager` now has order permissions via migration `0007_add_order_permissions_to_catalog_manager.py`
 - **Resolved**: Test fixtures no longer mutate shared roles (relies on migration state)
-
-### Known Issues:
-- All tests now passing (82 tests for products + orders)
-- Code formatted with Black and isort
-- NOTE: `core/tests/test_permissions.py` has import error (`Request` from `ninja` not found) - pre-existing issue unrelated to recent changes
+- **Resolved**: BE-028 fixed - GET /v1/orders/ is now strictly staff-only
+- **Resolved**: BE-030 fixed - Status updates restricted to allowed values only (processing, confirmed, cancelled, completed)

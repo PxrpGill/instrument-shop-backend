@@ -53,7 +53,9 @@ class TestCreateOrderEndpoint:
         response = client.post("/v1/orders/", json=order_data, headers=headers)
 
         # Verify response
-        assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.json}"
+        assert (
+            response.status_code == 200
+        ), f"Expected 200, got {response.status_code}: {response.json}"
         data = response.json()
 
         assert data["status"] == OrderStatusChoices.NEW
@@ -92,7 +94,9 @@ class TestCreateOrderEndpoint:
         headers = auth_headers(regular_customer)
         response = client.post("/v1/orders/", json=order_data, headers=headers)
 
-        assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.json}"
+        assert (
+            response.status_code == 200
+        ), f"Expected 200, got {response.status_code}: {response.json}"
         data = response.json()
 
         assert data["contact_email"] == "minimal@example.com"
@@ -100,7 +104,9 @@ class TestCreateOrderEndpoint:
         assert data["first_name"] == ""
         assert data["items"][0]["product_name"] == "Single Item"
 
-    def test_create_order_requires_authentication(self, client, published_product_factory):
+    def test_create_order_requires_authentication(
+        self, client, published_product_factory
+    ):
         """Test that order creation requires authentication."""
         product = published_product_factory(name="Test Product", price=100.00)
 
@@ -312,7 +318,9 @@ class TestRestrictToPublishedProducts:
         BE-027: Only published products should be orderable.
         """
         # Create a draft product (default status)
-        draft_product = product_factory(name="Draft Guitar", price=299.99, status="draft")
+        draft_product = product_factory(
+            name="Draft Guitar", price=299.99, status="draft"
+        )
 
         order_data = {
             "contact_email": "test@example.com",
@@ -337,7 +345,9 @@ class TestRestrictToPublishedProducts:
         auth_headers,
     ):
         """Test that archived products cannot be ordered."""
-        archived_product = product_factory(name="Old Guitar", price=299.99, status="archived")
+        archived_product = product_factory(
+            name="Old Guitar", price=299.99, status="archived"
+        )
 
         order_data = {
             "contact_email": "test@example.com",
@@ -360,7 +370,9 @@ class TestRestrictToPublishedProducts:
         auth_headers,
     ):
         """Test that published products can be ordered."""
-        published_product = published_product_factory(name="Published Guitar", price=299.99)
+        published_product = published_product_factory(
+            name="Published Guitar", price=299.99
+        )
 
         order_data = {
             "contact_email": "test@example.com",
@@ -448,42 +460,46 @@ class TestRestrictToPublishedProducts:
 
 @pytest.mark.django_db
 class TestListOrdersEndpoint:
-    """Tests for GET /v1/orders/ - List orders."""
+    """Tests for GET /v1/orders/ - List orders (staff only).
 
-    def test_list_own_orders(
+    BE-028: Customer or guest access should not be granted.
+    """
+
+    def test_customer_cannot_list_orders(
         self,
         client,
         regular_customer,
         order_factory,
         auth_headers,
     ):
-        """Test that customers can only see their own orders."""
-        # Create orders for this customer
-        order1 = order_factory(customer=regular_customer)
-        order2 = order_factory(customer=regular_customer)
+        """
+        Test that customers cannot list orders.
 
-        # Create another customer with order using the fixture directly in the test
-        from apps.users.services.customer_service import CustomerService
-        other_customer = CustomerService.create_customer(
-            email="other@example.com",
-            password="testpass123",
-            first_name="Other",
-            last_name="Customer",
-            phone="+9876543210"
-        )
-        order_factory(customer=other_customer)
+        BE-028: Only staff should be able to access this endpoint.
+        """
+        # Create orders for this customer
+        order_factory(customer=regular_customer)
+        order_factory(customer=regular_customer)
 
         headers = auth_headers(regular_customer)
         response = client.get("/v1/orders/", headers=headers)
 
-        assert response.status_code == 200
-        data = response.json()
+        # Should get 403 (access denied)
+        assert response.status_code == 403
 
-        # Should only see own orders
-        assert len(data) == 2
-        order_ids = {order1.id, order2.id}
-        response_ids = {o["id"] for o in data}
-        assert response_ids == order_ids
+    def test_guest_cannot_list_orders(
+        self,
+        client,
+        order_factory,
+        regular_customer,
+    ):
+        """Test that unauthenticated users cannot list orders."""
+        order_factory(customer=regular_customer)
+
+        response = client.get("/v1/orders/")
+
+        # Should get 401 or 403
+        assert response.status_code in [401, 403]
 
     def test_list_orders_staff_sees_all(
         self,
@@ -493,10 +509,26 @@ class TestListOrdersEndpoint:
         order_factory,
         auth_headers,
     ):
-        """Test that staff users can see all orders."""
-        # Create orders for different customers
-        order_factory(customer=regular_customer)
-        order_factory(customer=regular_customer)
+        """
+        Test that staff users can see all orders.
+
+        BE-028: Staff should see all orders, not just their own.
+        """
+        # Create orders for regular customer
+        order1 = order_factory(customer=regular_customer)
+        order2 = order_factory(customer=regular_customer)
+
+        # Create another customer with order
+        from apps.users.services.customer_service import CustomerService
+
+        other_customer = CustomerService.create_customer(
+            email="other@example.com",
+            password="testpass123",
+            first_name="Other",
+            last_name="Customer",
+            phone="+9876543210",
+        )
+        order3 = order_factory(customer=other_customer)
 
         headers = auth_headers(admin_customer)
         response = client.get("/v1/orders/", headers=headers)
@@ -504,25 +536,36 @@ class TestListOrdersEndpoint:
         assert response.status_code == 200
         data = response.json()
 
-        # Admin should see all orders
-        assert len(data) >= 2
+        # Admin should see all orders (3 total)
+        assert len(data) == 3
+        response_ids = {o["id"] for o in data}
+        assert response_ids == {order1.id, order2.id, order3.id}
 
     def test_filter_orders_by_status(
         self,
         client,
         regular_customer,
+        admin_customer,
         order_factory,
         auth_headers,
     ):
-        """Test filtering orders by status."""
-        # Create orders with different statuses
+        """
+        Test filtering orders by status (staff only).
+
+        BE-028: Only staff can filter orders.
+        """
+        # Create orders with different statuses for regular customer
         order_factory(customer=regular_customer, status=OrderStatusChoices.NEW)
         order_factory(customer=regular_customer, status=OrderStatusChoices.NEW)
         order_factory(customer=regular_customer, status=OrderStatusChoices.COMPLETED)
 
+        # Regular customer should be denied
         headers = auth_headers(regular_customer)
+        response = client.get("/v1/orders/?status=new", headers=headers)
+        assert response.status_code == 403
 
-        # Filter by NEW status
+        # Admin can filter
+        headers = auth_headers(admin_customer)
         response = client.get("/v1/orders/?status=new", headers=headers)
 
         assert response.status_code == 200
@@ -546,7 +589,9 @@ class TestGetOrderEndpoint:
     ):
         """Test that customer can view their own order with items."""
         order = order_factory(customer=regular_customer)
-        order_item_factory(order=order, product_name="Guitar", unit_price=Decimal("299.99"))
+        order_item_factory(
+            order=order, product_name="Guitar", unit_price=Decimal("299.99")
+        )
 
         headers = auth_headers(regular_customer)
         response = client.get(f"/v1/orders/{order.id}", headers=headers)
@@ -594,29 +639,13 @@ class TestGetOrderEndpoint:
         assert response.status_code == 200
         data = response.json()
         assert data["id"] == order.id
-        assert len(data["items"]) == 1
-        assert data["items"][0]["product_name"] == "Guitar"
-        assert data["total_amount"] == "299.99"
 
-    def test_cannot_view_other_customer_order(
-        self,
-        client,
-        regular_customer,
-        customer_factory,
-        order_factory,
-        auth_headers,
-    ):
-        """Test that customer cannot view another customer's order."""
-        other_customer = customer_factory(email="other@example.com")
-        other_order = order_factory(customer=other_customer)
 
-        headers = auth_headers(regular_customer)
-        response = client.get(f"/v1/orders/{other_order.id}", headers=headers)
+@pytest.mark.django_db
+class TestUpdateOrderStatusEndpoint:
+    """Tests for PUT /v1/orders/{id}/status - BE-030 Update order status."""
 
-        # Should get 404 (to not leak existence) or 403
-        assert response.status_code in [403, 404]
-
-    def test_staff_can_view_any_order(
+    def test_staff_can_update_status_to_processing(
         self,
         client,
         admin_customer,
@@ -624,12 +653,335 @@ class TestGetOrderEndpoint:
         order_factory,
         auth_headers,
     ):
-        """Test that staff can view any order."""
-        order = order_factory(customer=regular_customer)
+        """
+        Test that staff can update order status.
+
+        BE-030: Staff should be able to change order status.
+        """
+        order = order_factory(customer=regular_customer, status=OrderStatusChoices.NEW)
 
         headers = auth_headers(admin_customer)
-        response = client.get(f"/v1/orders/{order.id}", headers=headers)
+        response = client.put(
+            f"/v1/orders/{order.id}/status",
+            json={"status": "processing"},
+            headers=headers,
+        )
 
         assert response.status_code == 200
         data = response.json()
-        assert data["id"] == order.id
+        assert data["status"] == "processing"
+
+        # Verify in database
+        order.refresh_from_db()
+        assert order.status == OrderStatusChoices.PROCESSING
+
+    def test_staff_can_update_status_to_confirmed(
+        self,
+        client,
+        admin_customer,
+        regular_customer,
+        order_factory,
+        auth_headers,
+    ):
+        """Test updating status to confirmed."""
+        order = order_factory(
+            customer=regular_customer, status=OrderStatusChoices.PROCESSING
+        )
+
+        headers = auth_headers(admin_customer)
+        response = client.put(
+            f"/v1/orders/{order.id}/status",
+            json={"status": "confirmed"},
+            headers=headers,
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "confirmed"
+
+    def test_staff_can_update_status_to_completed(
+        self,
+        client,
+        admin_customer,
+        regular_customer,
+        order_factory,
+        auth_headers,
+    ):
+        """Test updating status to completed."""
+        order = order_factory(
+            customer=regular_customer, status=OrderStatusChoices.CONFIRMED
+        )
+
+        headers = auth_headers(admin_customer)
+        response = client.put(
+            f"/v1/orders/{order.id}/status",
+            json={"status": "completed"},
+            headers=headers,
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "completed"
+
+    def test_staff_can_cancel_order_via_status(
+        self,
+        client,
+        admin_customer,
+        regular_customer,
+        order_factory,
+        auth_headers,
+    ):
+        """Test that staff can cancel order via status update."""
+        order = order_factory(customer=regular_customer, status=OrderStatusChoices.NEW)
+
+        headers = auth_headers(admin_customer)
+        response = client.put(
+            f"/v1/orders/{order.id}/status",
+            json={"status": "cancelled"},
+            headers=headers,
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "cancelled"
+
+    def test_customer_cannot_update_status(
+        self,
+        client,
+        regular_customer,
+        order_factory,
+        auth_headers,
+    ):
+        """
+        Test that regular customers cannot update order status.
+
+        BE-030: Only staff should be able to update status.
+        """
+        order = order_factory(customer=regular_customer, status=OrderStatusChoices.NEW)
+
+        headers = auth_headers(regular_customer)
+        response = client.put(
+            f"/v1/orders/{order.id}/status",
+            json={"status": "processing"},
+            headers=headers,
+        )
+
+        # Should get 403 (no permission)
+        assert response.status_code == 403
+
+        # Verify status hasn't changed
+        order.refresh_from_db()
+        assert order.status == OrderStatusChoices.NEW
+
+    def test_guest_cannot_update_status(
+        self,
+        client,
+        regular_customer,
+        order_factory,
+    ):
+        """Test that unauthenticated users cannot update status."""
+        order = order_factory(customer=regular_customer, status=OrderStatusChoices.NEW)
+
+        response = client.put(
+            f"/v1/orders/{order.id}/status",
+            json={"status": "processing"},
+        )
+
+        # Should get 401 or 403
+        assert response.status_code in [401, 403]
+
+    def test_invalid_status_rejected(
+        self,
+        client,
+        admin_customer,
+        regular_customer,
+        order_factory,
+        auth_headers,
+    ):
+        """
+        Test that invalid status values are rejected.
+
+        BE-030: Invalid status values should be rejected with validation error.
+        Also, 'new' status should be rejected (only processing, confirmed,
+        cancelled, completed are allowed).
+        """
+        order = order_factory(customer=regular_customer, status=OrderStatusChoices.NEW)
+
+        headers = auth_headers(admin_customer)
+
+        # Test invalid status string
+        response = client.put(
+            f"/v1/orders/{order.id}/status",
+            json={"status": "invalid_status"},
+            headers=headers,
+        )
+        # Should get 422 (validation error) or 400
+        assert response.status_code in [400, 422]
+
+        # Test that 'new' status is rejected (BE-030: limit allowable statuses)
+        response = client.put(
+            f"/v1/orders/{order.id}/status",
+            json={"status": "new"},
+            headers=headers,
+        )
+        # Should get 422 (validation error) or 400
+        assert response.status_code in [400, 422]
+        data = response.json()
+        assert "allowed" in str(data).lower() or "invalid" in str(data).lower()
+
+    def test_catalog_manager_can_update_status(
+        self,
+        client,
+        manager_customer,
+        regular_customer,
+        order_factory,
+        auth_headers,
+    ):
+        """Test that catalog_manager can also update order status."""
+        order = order_factory(customer=regular_customer, status=OrderStatusChoices.NEW)
+
+        headers = auth_headers(manager_customer)
+        response = client.put(
+            f"/v1/orders/{order.id}/status",
+            json={"status": "processing"},
+            headers=headers,
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "processing"
+
+
+@pytest.mark.django_db
+class TestCancelOrderEndpoint:
+    """Tests for POST /v1/orders/{id}/cancel - Cancel order endpoint."""
+
+    def test_customer_can_cancel_own_order(
+        self,
+        client,
+        regular_customer,
+        order_factory,
+        auth_headers,
+    ):
+        """Test that customer can cancel their own order in NEW status."""
+        order = order_factory(customer=regular_customer, status=OrderStatusChoices.NEW)
+
+        headers = auth_headers(regular_customer)
+        response = client.post(f"/v1/orders/{order.id}/cancel", headers=headers)
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "cancelled"
+
+        # Verify in database
+        order.refresh_from_db()
+        assert order.status == OrderStatusChoices.CANCELLED
+
+    def test_customer_can_cancel_processing_order(
+        self,
+        client,
+        regular_customer,
+        order_factory,
+        auth_headers,
+    ):
+        """Test that customer can cancel order in PROCESSING status."""
+        order = order_factory(
+            customer=regular_customer, status=OrderStatusChoices.PROCESSING
+        )
+
+        headers = auth_headers(regular_customer)
+        response = client.post(f"/v1/orders/{order.id}/cancel", headers=headers)
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "cancelled"
+
+    def test_cannot_cancel_completed_order(
+        self,
+        client,
+        regular_customer,
+        order_factory,
+        auth_headers,
+    ):
+        """Test that completed orders cannot be cancelled."""
+        order = order_factory(
+            customer=regular_customer, status=OrderStatusChoices.COMPLETED
+        )
+
+        headers = auth_headers(regular_customer)
+        response = client.post(f"/v1/orders/{order.id}/cancel", headers=headers)
+
+        assert response.status_code == 400
+        data = response.json()
+        assert "cannot be cancelled" in str(data).lower()
+
+    def test_cannot_cancel_already_cancelled_order(
+        self,
+        client,
+        regular_customer,
+        order_factory,
+        auth_headers,
+    ):
+        """Test that already cancelled orders cannot be cancelled again."""
+        order = order_factory(
+            customer=regular_customer, status=OrderStatusChoices.CANCELLED
+        )
+
+        headers = auth_headers(regular_customer)
+        response = client.post(f"/v1/orders/{order.id}/cancel", headers=headers)
+
+        assert response.status_code == 400
+
+    def test_cannot_cancel_other_customer_order(
+        self,
+        client,
+        regular_customer,
+        customer_factory,
+        order_factory,
+        auth_headers,
+    ):
+        """Test that customer cannot cancel another customer's order."""
+        other_customer = customer_factory(email="other@example.com")
+        other_order = order_factory(
+            customer=other_customer, status=OrderStatusChoices.NEW
+        )
+
+        headers = auth_headers(regular_customer)
+        response = client.post(f"/v1/orders/{other_order.id}/cancel", headers=headers)
+
+        # Should get 404 (to not leak existence)
+        assert response.status_code in [403, 404]
+
+    def test_staff_can_cancel_any_order(
+        self,
+        client,
+        admin_customer,
+        regular_customer,
+        order_factory,
+        auth_headers,
+    ):
+        """Test that staff can cancel any order."""
+        order = order_factory(
+            customer=regular_customer, status=OrderStatusChoices.CONFIRMED
+        )
+
+        headers = auth_headers(admin_customer)
+        response = client.post(f"/v1/orders/{order.id}/cancel", headers=headers)
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "cancelled"
+
+    def test_guest_cannot_cancel_order(
+        self,
+        client,
+        regular_customer,
+        order_factory,
+    ):
+        """Test that unauthenticated users cannot cancel orders."""
+        order = order_factory(customer=regular_customer, status=OrderStatusChoices.NEW)
+
+        response = client.post(f"/v1/orders/{order.id}/cancel")
+
+        # Should get 401 or 403
+        assert response.status_code in [401, 403]

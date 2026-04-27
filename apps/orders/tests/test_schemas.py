@@ -9,10 +9,14 @@ import pytest
 from pydantic import ValidationError
 
 from apps.orders.models import OrderStatusChoices
-from apps.orders.schemas import (OrderCreateSchema, OrderItemCreateSchema,
-                                 OrderItemResponseSchema,
-                                 OrderListResponseSchema, OrderResponseSchema,
-                                 OrderStatusUpdateSchema)
+from apps.orders.schemas import (
+    OrderCreateSchema,
+    OrderItemCreateSchema,
+    OrderItemResponseSchema,
+    OrderListResponseSchema,
+    OrderResponseSchema,
+    OrderStatusUpdateSchema,
+)
 
 
 class TestOrderItemCreateSchema:
@@ -272,11 +276,30 @@ class TestOrderStatusUpdateSchema:
         schema = OrderStatusUpdateSchema(status=OrderStatusChoices.PROCESSING)
         assert schema.status == OrderStatusChoices.PROCESSING
 
-    def test_all_statuses_valid(self):
-        """Test all status choices are valid for update."""
-        for status_choice in OrderStatusChoices:
+    def test_allowed_statuses_valid(self):
+        """
+        Test that only allowed statuses are valid for update.
+
+        BE-030: Only processing, confirmed, cancelled, completed are allowed.
+        """
+        allowed_statuses = [
+            OrderStatusChoices.PROCESSING,
+            OrderStatusChoices.CONFIRMED,
+            OrderStatusChoices.CANCELLED,
+            OrderStatusChoices.COMPLETED,
+        ]
+        for status_choice in allowed_statuses:
             schema = OrderStatusUpdateSchema(status=status_choice)
             assert schema.status == status_choice
+
+    def test_new_status_rejected(self):
+        """
+        Test that 'new' status is rejected for update.
+
+        BE-030: 'new' is not in the allowed set of statuses.
+        """
+        with pytest.raises(Exception):  # Pydantic ValidationError
+            OrderStatusUpdateSchema(status=OrderStatusChoices.NEW)
 
     def test_invalid_status_fails(self):
         """Test invalid status value fails validation."""
