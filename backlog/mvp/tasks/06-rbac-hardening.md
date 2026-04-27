@@ -1,4 +1,4 @@
-# 06 RBAC Hardening
+# 06 RBAC Hardening ✅
 
 ### BE-019 Centralize permission constants
 

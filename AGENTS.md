@@ -186,7 +186,7 @@ instrument-shop-backend/
 ├── apps/                    # Django apps
 │   ├── users/              # User management
 │   ├── products/           # Product catalog
-│   └── ...                 # Other apps
+│   └── orders/             # Order management
 ├── core/                   # Core utilities
 ├── instrument_shop/        # Settings and URLs
 ├── docker/                 # Docker config
@@ -350,6 +350,53 @@ def test_something(self, auth_headers):
 docker-compose exec web python -m pytest apps/products/tests/ --reuse-db
 ```
 
+#### 8. Pydantic v2 Schema Serialization
+**Problem**: Pydantic v2 does not auto-serialize `Decimal`, `datetime`, or enum fields to strings when using `from_attributes=True`.
+**Solution**: Use typed serializers with `Annotated`:
+```python
+from pydantic import PlainSerializer
+from typing import Annotated
+from datetime import datetime
+from decimal import Decimal
+
+# For Decimal fields
+DecimalField = Annotated[Decimal, PlainSerializer(lambda v: str(v), return_type=str)]
+
+# For datetime fields
+DatetimeField = Annotated[
+    datetime,
+    PlainSerializer(lambda v: v.isoformat() if v else None, return_type=Optional[str]),
+]
+
+# For enum fields
+def _serialize_status(value: OrderStatusChoices) -> str:
+    return value.value
+
+OrderStatusField = Annotated[
+    OrderStatusChoices,
+    PlainSerializer(_serialize_status, return_type=str),
+]
+```
+
+**Problem**: Django related managers don't serialize automatically with `from_attributes=True`.
+**Solution**: Use `model_validator(mode="before")` to convert:
+```python
+@model_validator(mode="before")
+@classmethod
+def convert_related_managers(cls, data):
+    """Convert Django related managers to lists for serialization."""
+    if hasattr(data, "__dict__"):
+        data_dict = {}
+        for field_name in cls.model_fields.keys():
+            value = getattr(data, field_name, None)
+            # Handle related managers
+            if hasattr(value, "all") and callable(value.all):
+                value = list(value.all())
+            data_dict[field_name] = value
+        return data_dict
+    return data
+```
+
 ### Automatic Agent Invocation for Backlog Tasks
 
 When working on backlog tasks, automatically determine and invoke the appropriate subagent:
@@ -396,12 +443,23 @@ When working on backlog tasks, automatically determine and invoke the appropriat
 ## Task Context Summary
 
 ### Completed Tasks:
-1. **Task 06 (RBAC Hardening)**:
+1. **Task 07 (Order Domain)**:
+   - BE-021: Created `Order` model with customer relation, status, contact fields, timestamps
+   - BE-022: Created `OrderItem` model with product snapshot (product_name, unit_price), quantity
+   - BE-023: Defined order status choices: `new`, `processing`, `confirmed`, `cancelled`, `completed` (default: new)
+   - BE-024: Created order schemas with proper Pydantic v2 validation:
+     - `EmailStr` for contact_email validation
+     - `PlainSerializer` for Decimal → str, datetime → str, OrderStatusChoices → str serialization
+     - `model_validator` for Django related managers conversion
+   - Added `apps/orders/tests/` with 42 tests covering models and schemas
+   - Added order permissions to `apps/users/constants.py`
+
+2. **Task 06 (RBAC Hardening)**:
    - BE-019: Created `apps/users/constants.py` with centralized permission/role constants
    - BE-020: Created migration `0004_update_roles_to_catalog_manager.py` (renamed `manager` → `catalog_manager`)
    - Updated all controllers, services, and tests to use constants
 
-2. **Task 05 (Internal Catalog API Refinement)** ✅ **Review Fixed**:
+3. **Task 05 (Internal Catalog API Refinement)** ✅ **Review Fixed**:
    - BE-016: Separated public API (`public_api.py`) from internal API (`controllers.py`)
    - BE-017: Staff can change product status via `/products/{id}/publish/` endpoint
    - BE-018: Staff can manage product `availability` field via update endpoint
@@ -411,7 +469,7 @@ When working on backlog tasks, automatically determine and invoke the appropriat
      - Fixed permission check in `publish_product` endpoint (`EDIT_PRODUCT` → `PUBLISH_PRODUCT`)
    - **Tests**: 27/27 tests passing, added tests for all 3 review scenarios
 
-3. **Task 04 (Public Catalog API)** ✅:
+4. **Task 04 (Public Catalog API)** ✅:
    - BE-011: Created public categories list endpoint (no auth required, returns `id`, `name`, `slug` only)
    - BE-012: Created public products list endpoint (returns only `published` products, supports pagination)
    - BE-013: Created public product detail endpoint (returns only `published` products with categories and images)
@@ -420,5 +478,6 @@ When working on backlog tasks, automatically determine and invoke the appropriat
    - **Implementation**: All public endpoints in `apps/products/public_api.py` using `PublicProductSchema`, `PublicProductListSchema`, `PublicCategorySchema`
 
 ### Known Issues:
-- All tests now passing after review fixes
+- All tests now passing (82 tests for products + orders)
 - Code formatted with Black and isort
+- NOTE: `core/tests/test_permissions.py` has import error (`Request` from `ninja` not found) - pre-existing issue unrelated to recent changes

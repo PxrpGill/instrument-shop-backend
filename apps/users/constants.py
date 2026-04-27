@@ -42,6 +42,13 @@ class Permission:
     VIEW_OWN_PROFILE: Final[str] = "view_own_profile"
     EDIT_OWN_PROFILE: Final[str] = "edit_own_profile"
 
+    # Order permissions
+    VIEW_ORDER: Final[str] = "view_order"
+    CREATE_ORDER: Final[str] = "create_order"
+    EDIT_ORDER: Final[str] = "edit_order"
+    CANCEL_ORDER: Final[str] = "cancel_order"
+    MANAGE_ORDER_STATUS: Final[str] = "manage_order_status"
+
     # Wildcard - grants all permissions
     WILDCARD: Final[str] = "*"
 
@@ -61,6 +68,11 @@ ALL_PERMISSIONS: Final[list[str]] = [
     Permission.VIEW_CUSTOMER,
     Permission.VIEW_OWN_PROFILE,
     Permission.EDIT_OWN_PROFILE,
+    Permission.VIEW_ORDER,
+    Permission.CREATE_ORDER,
+    Permission.EDIT_ORDER,
+    Permission.CANCEL_ORDER,
+    Permission.MANAGE_ORDER_STATUS,
 ]
 
 
