@@ -36,6 +36,7 @@ def customer_factory():
         password: str = "testpass123",
         first_name: str = "Test",
         last_name: str = "User",
+        phone: str = "+1234567890",
         is_active: bool = True
     ) -> Customer:
         return CustomerService.create_customer(
@@ -43,6 +44,7 @@ def customer_factory():
             password=password,
             first_name=first_name,
             last_name=last_name,
+            phone=phone,
         )
     return create_customer
 

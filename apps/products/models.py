@@ -1,5 +1,6 @@
-from django.db import models
+from django.db import models, transaction
 from django.utils.text import slugify
+from django.db.models import Q
 
 
 class TimeStampedModel(models.Model):
@@ -120,6 +121,32 @@ class ProductImage(TimeStampedModel):
         verbose_name = "Product Image"
         verbose_name_plural = "Product Images"
         ordering = ["-is_primary", "-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["product"],
+                condition=Q(is_primary=True),
+                name="unique_primary_image_per_product",
+                violation_error_message="Product already has a primary image.",
+            )
+        ]
 
     def __str__(self) -> str:
         return f"{self.product.name} - {self.image.name}"
+
+    def save(self, *args, **kwargs):
+        """
+        Override save to ensure only one primary image per product.
+
+        When setting is_primary=True, all other images for this product
+        will have is_primary set to False.
+        """
+        if self.is_primary:
+            # Use transaction to ensure consistency
+            with transaction.atomic():
+                # Set all other images for this product to not primary
+                ProductImage.objects.filter(
+                    product=self.product, is_primary=True
+                ).exclude(pk=self.pk).update(is_primary=False)
+                super().save(*args, **kwargs)
+        else:
+            super().save(*args, **kwargs)

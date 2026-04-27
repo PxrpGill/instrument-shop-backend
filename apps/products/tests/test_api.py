@@ -6,6 +6,7 @@ from django.urls import reverse
 from django.core.files.uploadedfile import SimpleUploadedFile
 from ninja.testing import TestClient
 from rest_framework_simplejwt.tokens import RefreshToken
+from django.db import transaction, IntegrityError
 
 from instrument_shop.api import api
 from apps.products.models import Product, Category, ProductImage
@@ -306,3 +307,137 @@ class TestProductPublication:
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "draft"
+
+
+@pytest.mark.django_db
+class TestProductImagePrimaryRules:
+    """Tests for single primary image enforcement."""
+
+    def test_first_image_primary_by_default(self, product_factory):
+        """Test that first image can be set as primary."""
+        product = product_factory(name="Test Product", price=100)
+        image = ProductImage.objects.create(
+            product=product,
+            image="test1.jpg",
+            is_primary=True
+        )
+        assert image.is_primary is True
+
+    def test_set_second_image_as_primary(self, product_factory):
+        """Test that setting second image as primary unsets the first."""
+        product = product_factory(name="Test Product", price=100)
+        image1 = ProductImage.objects.create(
+            product=product,
+            image="test1.jpg",
+            is_primary=True
+        )
+        image2 = ProductImage.objects.create(
+            product=product,
+            image="test2.jpg",
+            is_primary=True
+        )
+
+        image1.refresh_from_db()
+        assert image1.is_primary is False
+        assert image2.is_primary is True
+
+    def test_update_image_to_primary(self, product_factory):
+        """Test updating an existing image to primary unsets others."""
+        product = product_factory(name="Test Product", price=100)
+        image1 = ProductImage.objects.create(
+            product=product,
+            image="test1.jpg",
+            is_primary=True
+        )
+        image2 = ProductImage.objects.create(
+            product=product,
+            image="test2.jpg",
+            is_primary=False
+        )
+
+        # Update image2 to be primary
+        image2.is_primary = True
+        image2.save()
+
+        image1.refresh_from_db()
+        assert image1.is_primary is False
+        assert image2.is_primary is True
+
+    def test_only_one_primary_after_multiple_saves(self, product_factory):
+        """Stress test: ensure only one primary after multiple save operations."""
+        product = product_factory(name="Test Product", price=100)
+        images = []
+        for i in range(5):
+            img = ProductImage.objects.create(
+                product=product,
+                image=f"test{i}.jpg",
+                is_primary=(i == 0)  # Only first is primary
+            )
+            images.append(img)
+
+        # Set the last image as primary
+        images[4].is_primary = True
+        images[4].save()
+
+        # Refresh all
+        for img in images:
+            img.refresh_from_db()
+
+        primary_count = sum(1 for img in images if img.is_primary)
+        assert primary_count == 1
+        assert images[4].is_primary is True
+
+    def test_set_primary_updates_others_via_model(self, product_factory):
+        """Test that setting primary via model save() unsets others."""
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+
+        # Create a simple user for testing (bypass CustomerService issues)
+        product = product_factory(name="Test Product", price=100)
+
+        # Create first image as primary
+        image1 = ProductImage.objects.create(
+            product=product,
+            image="test1.jpg",
+            is_primary=True
+        )
+        assert image1.is_primary is True
+
+        # Create second image as primary via save()
+        image2 = ProductImage.objects.create(
+            product=product,
+            image="test2.jpg",
+            is_primary=True
+        )
+
+        # Refresh from db
+        image1.refresh_from_db()
+
+        # Verify only image2 is primary
+        assert image1.is_primary is False
+        assert image2.is_primary is True
+
+    def test_database_constraint_prevents_double_primary(self, product_factory):
+        """Test that database constraint prevents two primary images."""
+        product = product_factory(name="Test Product", price=100)
+
+        # Create first primary image (via save(), which works)
+        ProductImage.objects.create(
+            product=product,
+            image="test1.jpg",
+            is_primary=True
+        )
+
+        # Try to create second primary using bulk_create to bypass save()
+        # This should fail due to the database constraint
+        images_to_create = [
+            ProductImage(
+                product=product,
+                image="test2.jpg",
+                is_primary=True
+            )
+        ]
+
+        with pytest.raises(IntegrityError):
+            with transaction.atomic():
+                ProductImage.objects.bulk_create(images_to_create)

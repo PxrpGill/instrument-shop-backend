@@ -1,4 +1,4 @@
-# 03 Product Images Rules
+# 03 Product Images Rules ✅
 
 ### BE-010 Ensure single primary image per product
 
