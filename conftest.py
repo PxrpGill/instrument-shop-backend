@@ -84,7 +84,11 @@ def manager_customer(customer_factory):
 
 @pytest.fixture
 def regular_customer(customer_factory):
-    """Create a regular customer."""
+    """Create a regular customer.
+    
+    Note: The customer role should have create_order permission via migration 0006.
+    If this test fails with 403, check that the migration was applied.
+    """
     customer = customer_factory(email="customer@example.com")
     RoleService.assign_role(customer, RoleName.CUSTOMER)
     return customer

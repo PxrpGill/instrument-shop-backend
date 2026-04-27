@@ -238,6 +238,7 @@ class RoleService:
                     Permission.VIEW_CATEGORY: True,
                     Permission.VIEW_OWN_PROFILE: True,
                     Permission.EDIT_OWN_PROFILE: True,
+                    Permission.CREATE_ORDER: True,
                 },
             },
             RoleName.CATALOG_MANAGER: {
