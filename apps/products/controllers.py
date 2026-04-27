@@ -4,7 +4,7 @@ from typing import List
 
 from core.auth.permissions import HasPermission, HasRoleMixin, IsAuthenticated
 from apps.users.api.controllers import get_customer_from_request
-from .models import Category, Product, ProductImage
+from .models import Category, Product, ProductImage, ProductStatusChoices
 from .schemas import (
     CategorySchema,
     CategoryCreateSchema,
@@ -14,6 +14,7 @@ from .schemas import (
     ProductImageSchema,
     ProductImageCreateSchema,
 )
+from .services import ProductPublicationService, ProductPublicationError
 
 # ============================================================================
 # Categories Router
@@ -142,6 +143,24 @@ def update_product(request, product_id: int, payload: ProductUpdateSchema):
     product = get_object_or_404(Product, pk=product_id)
     for key, value in payload.dict().items():
         setattr(product, key, value)
+    product.save()
+    return product
+
+
+@router.post("/{int:product_id}/publish", response=ProductSchema)
+def publish_product(request, product_id: int):
+    """
+    Publish a product.
+    Requires edit_product permission (admin/manager).
+    Validates publication readiness (name, price, image, category).
+    """
+    customer = get_customer_from_request(request)
+    HasRoleMixin.require_permission(customer, 'edit_product')
+    product = get_object_or_404(Product, pk=product_id)
+    errors = ProductPublicationService.get_publication_errors(product)
+    if errors:
+        raise ProductPublicationError(errors)
+    product.status = ProductStatusChoices.PUBLISHED
     product.save()
     return product
 

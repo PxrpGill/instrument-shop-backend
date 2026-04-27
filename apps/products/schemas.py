@@ -68,7 +68,7 @@ class ProductSchema(ModelSchema):
 
 
 class ProductCreateSchema(ModelSchema):
-    """Schema for Product creation."""
+    """Schema for Product creation. Status is always set to draft."""
 
     category_ids: Optional[list[int]] = []
 
@@ -81,13 +81,12 @@ class ProductCreateSchema(ModelSchema):
             "price",
             "sku",
             "brand",
-            "status",
             "availability",
         ]
 
 
 class ProductUpdateSchema(ModelSchema):
-    """Schema for Product update."""
+    """Schema for Product update. Status cannot be changed directly."""
 
     class Meta:
         model = Product
@@ -98,6 +97,5 @@ class ProductUpdateSchema(ModelSchema):
             "price",
             "sku",
             "brand",
-            "status",
             "availability",
         ]

@@ -2,8 +2,18 @@
 
 ## Project Overview
 Django 6.0.4 backend with Django Ninja API. Modular structure with apps in `apps/`.
+Application runs in Docker.
 
 ## Development Commands
+
+### Docker
+All commands run inside Docker containers from `docker/dev` directory:
+```bash
+cd docker/dev
+docker-compose exec web <command>  # Run command in web container
+docker-compose logs -f web         # View logs
+docker-compose exec web bash       # Shell access
+```
 
 ### Setup
 ```bash
@@ -14,70 +24,49 @@ pip install -r requirements.txt
 
 ### Server
 ```bash
-python manage.py runserver  # Default: 8000
-python manage.py runserver 8000  # Specific port
+cd docker/dev
+docker-compose up -d  # Start services
+docker-compose exec web python manage.py runserver  # Default: 8000
 ```
 
 ### Database
 ```bash
-python manage.py makemigrations
-python manage.py migrate
-python manage.py createsuperuser
+docker-compose exec web python manage.py makemigrations
+docker-compose exec web python manage.py migrate
+docker-compose exec web python manage.py createsuperuser
 ```
 
 ### Testing
 ```bash
+# Pytest (recommended)
+docker-compose exec web pytest apps/products/tests/
+docker-compose exec web pytest apps/products/tests/test_api.py::TestProductPublication -v
+
+# Django test runner
+docker-compose exec web python manage.py test apps.products.tests.test_api.TestProductPublication
+
 # All tests
-python manage.py test
-
-# Specific app
-python manage.py test apps.users
-
-# Specific test file
-python manage.py test apps.users.tests.test_api
-
-# Specific test method
-python manage.py test apps.users.tests.test_api.TestUserAuthentication.test_login_success
-# Alternative syntax
-python manage.py test apps.users.tests.test_api:TestUserAuthentication.test_login_success
-
-# Verbose output
-python manage.py test --verbosity=2
-
-# With coverage
-coverage run --source='.' manage.py test
-coverage report
-
-# Pytest direct (if configured)
-pytest apps/users/tests/
-pytest apps/users/tests/test_api.py::TestUserAuthentication::test_login_success
+docker-compose exec web python manage.py test
 ```
 
 ### Linting & Formatting
 ```bash
-# Check formatting
-black --check .
-black .
-
-# Check imports
-isort --check-only .
-isort .
-
-# Linting
-flake8 .
-mypy .
-
-# Django checks
-python manage.py check
-python manage.py makemigrations --check
+docker-compose exec web black --check .
+docker-compose exec web black .
+docker-compose exec web isort --check-only .
+docker-compose exec web isort .
+docker-compose exec web flake8 .
+docker-compose exec web mypy .
+docker-compose exec web python manage.py check
 ```
 
 ### Shell
 ```bash
-python manage.py shell
-python manage.py shell --ipython
-python manage.py show_urls
-python manage.py showmigrations
+cd docker/dev
+docker-compose exec web python manage.py shell
+docker-compose exec web python manage.py shell --ipython
+docker-compose exec web python manage.py show_urls
+docker-compose exec web python manage.py showmigrations
 ```
 
 ## Code Style
@@ -108,6 +97,14 @@ python manage.py showmigrations
 - API endpoints: `snake_case`
 - Descriptive names, avoid single letters
 - Booleans: `is_`, `has_`, `should_`
+### Product Publication Rules
+Products can only be published through `POST /products/{id}/publish/`.
+Publication requires:
+- `name` field must be set
+- `price` field must be set
+- At least one image (`ProductImage`)
+- At least one category
+Status cannot be changed via PUT or POST /products/, only via dedicated publish endpoint.
 
 ### Django Guidelines
 #### Models

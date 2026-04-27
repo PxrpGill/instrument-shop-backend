@@ -3,11 +3,12 @@ Tests for products API with RBAC protection.
 """
 import pytest
 from django.urls import reverse
+from django.core.files.uploadedfile import SimpleUploadedFile
 from ninja.testing import TestClient
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from instrument_shop.api import api
-from apps.products.models import Product, Category
+from apps.products.models import Product, Category, ProductImage
 from apps.users.models import Customer
 from apps.users.services.role_service import RoleService
 
@@ -195,3 +196,113 @@ class TestProductImagesAPI:
         """Test manager can add/update/delete images."""
         # This would require handling actual file upload
         pass
+
+
+@pytest.mark.django_db
+class TestProductPublication:
+    """Tests for product publication rules."""
+
+    @pytest.fixture
+    def complete_product(self, product_factory, category_factory):
+        """Create a product that meets all publication requirements."""
+        category = category_factory("Guitars")
+        product = product_factory(name="Fender Stratocaster", price=1500.00)
+        product.categories.add(category)
+        ProductImage.objects.create(
+            product=product,
+            image="test.jpg",
+            alt_text="Guitar image"
+        )
+        return product
+
+    def test_publish_valid_product(self, client, manager_customer, complete_product):
+        """Test manager can publish a valid product."""
+        tokens = RefreshToken.for_user(manager_customer)
+        access = str(tokens.access_token)
+
+        response = client.post(
+            f'/api/v1/products/{complete_product.id}/publish/',
+            HTTP_AUTHORIZATION=f'Bearer {access}'
+        )
+        assert response.status_code == 200
+        complete_product.refresh_from_db()
+        assert complete_product.status == "published"
+
+    def test_publish_without_image_fails(self, client, manager_customer, product_factory, category_factory):
+        """Test publishing product without image fails."""
+        category = category_factory("Guitars")
+        product = product_factory(name="No Image Product", price=100.00)
+        product.categories.add(category)
+
+        tokens = RefreshToken.for_user(manager_customer)
+        access = str(tokens.access_token)
+
+        response = client.post(
+            f'/api/v1/products/{product.id}/publish/',
+            HTTP_AUTHORIZATION=f'Bearer {access}'
+        )
+        assert response.status_code == 400
+        data = response.json()
+        assert "image" in str(data).lower()
+
+    def test_publish_without_category_fails(self, client, manager_customer, product_factory):
+        """Test publishing product without category fails."""
+        product = product_factory(name="No Category Product", price=100.00)
+        ProductImage.objects.create(product=product, image="test.jpg")
+
+        tokens = RefreshToken.for_user(manager_customer)
+        access = str(tokens.access_token)
+
+        response = client.post(
+            f'/api/v1/products/{product.id}/publish/',
+            HTTP_AUTHORIZATION=f'Bearer {access}'
+        )
+        assert response.status_code == 400
+        data = response.json()
+        assert "category" in str(data).lower()
+
+    def test_publish_without_name_fails(self, client, manager_customer, category_factory):
+        """Test publishing product without name fails."""
+        category = category_factory("Guitars")
+        product = Product.objects.create(price=100.00)
+        product.categories.add(category)
+        ProductImage.objects.create(product=product, image="test.jpg")
+
+        tokens = RefreshToken.for_user(manager_customer)
+        access = str(tokens.access_token)
+
+        response = client.post(
+            f'/api/v1/products/{product.id}/publish/',
+            HTTP_AUTHORIZATION=f'Bearer {access}'
+        )
+        assert response.status_code == 400
+
+    def test_publish_without_price_fails(self, client, manager_customer, category_factory):
+        """Test publishing product without price fails."""
+        category = category_factory("Guitars")
+        product = Product.objects.create(name="No Price Product")
+        product.categories.add(category)
+        ProductImage.objects.create(product=product, image="test.jpg")
+
+        tokens = RefreshToken.for_user(manager_customer)
+        access = str(tokens.access_token)
+
+        response = client.post(
+            f'/api/v1/products/{product.id}/publish/',
+            HTTP_AUTHORIZATION=f'Bearer {access}'
+        )
+        assert response.status_code == 400
+
+    def test_cannot_create_product_with_published_status(self, client, manager_customer):
+        """Test that creating product with status=published is ignored (always draft)."""
+        tokens = RefreshToken.for_user(manager_customer)
+        access = str(tokens.access_token)
+
+        response = client.post(
+            '/api/v1/products/',
+            {"name": "Test", "price": "100.00", "status": "published"},
+            HTTP_AUTHORIZATION=f'Bearer {access}'
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "draft"
