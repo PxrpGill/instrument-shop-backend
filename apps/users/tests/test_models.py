@@ -1,9 +1,11 @@
 """
 Tests for users models (Role, Customer, CustomerRole).
 """
+
 import pytest
 from django.core.exceptions import ValidationError
 from apps.users.models import Customer, Role, CustomerRole
+from apps.users.constants import RoleName
 from apps.users.services.customer_service import CustomerService
 from apps.users.services.role_service import RoleService
 
@@ -17,7 +19,7 @@ class TestRoleModel:
         role = RoleService.create_role(
             name="tester",
             description="Test role",
-            permissions={"view_product": True, "edit_product": False}
+            permissions={"view_product": True, "edit_product": False},
         )
         assert role.name == "tester"
         assert role.description == "Test role"
@@ -26,24 +28,27 @@ class TestRoleModel:
 
     def test_role_str_representation(self):
         """Test string representation."""
-        role = Role.objects.create(name="admin", permissions={})
-        assert str(role) == "admin"
+        # Use a unique role name to avoid conflict with existing roles
+        unique_name = "test_role_str"
+        role = Role.objects.create(name=unique_name, permissions={})
+        assert str(role) == unique_name
 
     def test_role_has_permission(self):
         """Test has_permission method."""
+        # Use unique role name
+        unique_name = "test_role_has_perm"
         role = Role.objects.create(
-            name="manager",
-            permissions={"create_product": True, "edit_product": True}
+            name=unique_name,
+            permissions={"create_product": True, "edit_product": True},
         )
         assert role.has_permission("create_product") is True
         assert role.has_permission("delete_product") is False
 
     def test_role_wildcard_permission(self):
         """Test wildcard permission (*) grants all."""
-        role = Role.objects.create(
-            name="admin",
-            permissions={"*": True}
-        )
+        # Use unique role name
+        unique_name = "test_role_wildcard"
+        role = Role.objects.create(name=unique_name, permissions={"*": True})
         assert role.has_permission("anything") is True
         assert role.has_permission("destroy_system") is True
 
@@ -77,10 +82,7 @@ class TestCustomerModel:
 
     def test_customer_str(self):
         """Test string representation."""
-        customer = Customer.objects.create(
-            email="str@test.com",
-            password_hash="hashed"
-        )
+        customer = Customer.objects.create(email="str@test.com", password_hash="hashed")
         assert str(customer) == "str@test.com"
 
     def test_get_full_name(self):
@@ -89,7 +91,7 @@ class TestCustomerModel:
             email="fullname@test.com",
             password_hash="hashed",
             first_name="John",
-            last_name="Doe"
+            last_name="Doe",
         )
         assert customer.get_full_name() == "John Doe"
 
@@ -102,8 +104,7 @@ class TestCustomerModel:
     def test_update_last_login(self):
         """Test updating last_login timestamp."""
         customer = Customer.objects.create(
-            email="login@test.com",
-            password_hash="hashed"
+            email="login@test.com", password_hash="hashed"
         )
         assert customer.last_login is None
         customer.update_last_login()
@@ -127,8 +128,7 @@ class TestRBACIntegration:
         """Test customer.has_permission() method."""
         customer = customer_factory()
         RoleService.create_role(
-            "editor",
-            permissions={"edit_product": True, "view_product": False}
+            "editor", permissions={"edit_product": True, "view_product": False}
         )
         RoleService.assign_role(customer, "editor")
 
@@ -138,7 +138,7 @@ class TestRBACIntegration:
     def test_customer_has_permission_admin_wildcard(self, customer_factory):
         """Test admin wildcard grants all permissions."""
         customer = customer_factory()
-        RoleService.assign_role(customer, "admin")
+        RoleService.assign_role(customer, RoleName.ADMIN)
 
         assert customer.has_permission("any_permission") is True
         assert customer.has_permission("system_override") is True
@@ -183,7 +183,9 @@ class TestRBACIntegration:
         assert perms["p2"] is True
         assert perms["p3"] is True
 
-    def test_customer_get_permissions_true_is_not_overridden_by_false(self, customer_factory):
+    def test_customer_get_permissions_true_is_not_overridden_by_false(
+        self, customer_factory
+    ):
         """Test that any granting role keeps permission enabled."""
         customer = customer_factory()
         RoleService.create_role("grant_role", permissions={"manage_orders": True})

@@ -132,7 +132,7 @@ class Customer(models.Model):
         """Возвращает полное имя клиента."""
         if self.first_name or self.last_name:
             return f"{self.first_name} {self.last_name}".strip()
-        return self.email
+        return ""
 
     def update_last_login(self):
         """Обновляет время последнего входа."""

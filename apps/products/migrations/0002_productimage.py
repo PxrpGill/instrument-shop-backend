@@ -7,25 +7,52 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('products', '0001_initial'),
+        ("products", "0001_initial"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='ProductImage',
+            name="ProductImage",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('image', models.ImageField(upload_to='products/')),
-                ('alt_text', models.CharField(blank=True, help_text='Alternative text for the image', max_length=255)),
-                ('is_primary', models.BooleanField(default=False, help_text='Set as primary image for the product')),
-                ('product', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='images', to='products.product')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                ("image", models.ImageField(upload_to="products/")),
+                (
+                    "alt_text",
+                    models.CharField(
+                        blank=True,
+                        help_text="Alternative text for the image",
+                        max_length=255,
+                    ),
+                ),
+                (
+                    "is_primary",
+                    models.BooleanField(
+                        default=False, help_text="Set as primary image for the product"
+                    ),
+                ),
+                (
+                    "product",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="images",
+                        to="products.product",
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Product Image',
-                'verbose_name_plural': 'Product Images',
-                'ordering': ['-is_primary', '-created_at'],
+                "verbose_name": "Product Image",
+                "verbose_name_plural": "Product Images",
+                "ordering": ["-is_primary", "-created_at"],
             },
         ),
     ]

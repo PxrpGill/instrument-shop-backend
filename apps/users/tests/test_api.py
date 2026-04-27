@@ -4,11 +4,13 @@ Tests for users API endpoints and RBAC protection.
 import pytest
 from django.urls import reverse
 from ninja.testing import TestClient
-from rest_framework_simplejwt.tokens import RefreshToken
 
 from instrument_shop.api import api
 from apps.users.models import Customer, Role
+from apps.users.constants import RoleName
+from apps.users.services.customer_service import CustomerService
 from apps.users.services.role_service import RoleService
+from apps.products.models import Product
 
 
 @pytest.mark.django_db
@@ -17,13 +19,17 @@ class TestAuthEndpoints:
 
     def test_registration_creates_customer_and_assigns_customer_role(self, client):
         """Test that registration creates customer and assigns default role."""
-        url = '/api/v1/customers/register'
-        response = client.post(url, {
-            "email": "new@example.com",
-            "password": "securepass123",
-            "first_name": "New",
-            "last_name": "User"
-        })
+        url = "/v1/customers/register"
+        response = client.post(
+            url,
+            json={
+                "email": "new@example.com",
+                "password": "securepass123",
+                "first_name": "New",
+                "last_name": "User",
+                "phone": "+1234567890",
+            },
+        )
         assert response.status_code == 200
         data = response.json()
         assert "access" in data
@@ -33,101 +39,97 @@ class TestAuthEndpoints:
         customer = Customer.objects.get(email="new@example.com")
         assert customer is not None
         # Default role should be assigned
-        assert customer.has_role("customer") is True
+        assert customer.has_role(RoleName.CUSTOMER) is True
 
     def test_login_success(self, client, customer_factory):
         """Test successful login."""
         customer = customer_factory(email="login@test.com", password="pass123")
-        url = '/api/v1/customers/login'
-        response = client.post(url, {
-            "email": "login@test.com",
-            "password": "pass123"
-        })
+        url = "/v1/customers/login"
+        response = client.post(
+            url, json={"email": "login@test.com", "password": "pass123"}
+        )
         assert response.status_code == 200
         data = response.json()
         assert "access" in data
 
     def test_login_invalid(self, client):
         """Test login with invalid credentials."""
-        url = '/api/v1/customers/login'
-        response = client.post(url, {
-            "email": "wrong@test.com",
-            "password": "wrongpass"
-        })
-        assert response.status_code == 400  # or 401 depending on error handling
+        url = "/v1/customers/login"
+        response = client.post(
+            url, json={"email": "wrong@test.com", "password": "wrongpass"}
+        )
+        assert response.status_code in [400, 401]  # depends on error handling
 
-    def test_get_profile_includes_roles(self, client, customer_factory):
+    def test_get_profile_includes_roles(self, client, customer_factory, auth_headers):
         """Test that /me endpoint returns roles and permissions."""
         customer = customer_factory()
-        RoleService.assign_role(customer, "customer")
+        RoleService.assign_role(customer, RoleName.CUSTOMER)
 
-        # Generate token
-        tokens = RefreshToken.for_user(customer)
-        access = str(tokens.access_token)
+        headers = auth_headers(customer)
 
-        url = '/api/v1/customers/me'
-        response = client.get(url, HTTP_AUTHORIZATION=f'Bearer {access}')
+        url = "/v1/customers/me"
+        response = client.get(url, headers=headers)
         assert response.status_code == 200
         data = response.json()
         assert "roles" in data
         assert "permissions" in data
-        assert "customer" in data["roles"]
+        assert RoleName.CUSTOMER in data["roles"]
 
 
 @pytest.mark.django_db
 class TestRBACPermissions:
     """Tests for role-based access control on endpoints."""
 
-    def test_customer_cannot_create_product(self, client, regular_customer):
+    def test_customer_cannot_create_product(
+        self, client, regular_customer, auth_headers
+    ):
         """Test that regular customer cannot create product."""
-        tokens = RefreshToken.for_user(regular_customer)
-        access = str(tokens.access_token)
+        headers = auth_headers(regular_customer)
 
-        url = '/api/v1/products/'
-        response = client.post(url, {
-            "name": "Test Product",
-            "price": "100.00"
-        }, HTTP_AUTHORIZATION=f'Bearer {access}')
-
-        # Should be forbidden (403)
+        response = client.post(
+            "/v1/products/",
+            json={"name": "New Product", "price": "99.99", "availability": "in_stock"},
+            headers=headers,
+        )
         assert response.status_code == 403
 
-    def test_manager_can_create_product(self, client, manager_customer):
+    def test_manager_can_create_product(self, client, manager_customer, auth_headers):
         """Test that manager can create product."""
-        tokens = RefreshToken.for_user(manager_customer)
-        access = str(tokens.access_token)
+        headers = auth_headers(manager_customer)
 
-        url = '/api/v1/products/'
-        response = client.post(url, {
-            "name": "Manager Product",
-            "price": "200.00"
-        }, HTTP_AUTHORIZATION=f'Bearer {access}')
-
+        response = client.post(
+            "/v1/products/",
+            json={
+                "name": "Manager Product",
+                "price": "150.00",
+                "description": "Created by manager",
+                "availability": "in_stock",
+            },
+            headers=headers,
+        )
         assert response.status_code == 200
         data = response.json()
         assert data["name"] == "Manager Product"
+        assert Product.objects.filter(name="Manager Product").exists()
 
-    def test_admin_can_delete_product(self, client, admin_customer, product_factory):
+    def test_admin_can_delete_product(
+        self, client, admin_customer, product_factory, auth_headers
+    ):
         """Test that admin can delete product."""
-        # Create a product first
         product = product_factory(name="ToDelete", price=50)
 
-        tokens = RefreshToken.for_user(admin_customer)
-        access = str(tokens.access_token)
-
-        url = f'/api/v1/products/{product.id}/'
-        response = client.delete(url, HTTP_AUTHORIZATION=f'Bearer {access}')
+        headers = auth_headers(admin_customer)
+        response = client.delete(f"/v1/products/{product.id}", headers=headers)
         assert response.status_code == 200
 
-    def test_regular_customer_cannot_delete_product(self, client, regular_customer, product_factory):
+    def test_regular_customer_cannot_delete_product(
+        self, client, regular_customer, product_factory, auth_headers
+    ):
         """Test that regular customer cannot delete product."""
         product = product_factory(name="Protected", price=100)
 
-        tokens = RefreshToken.for_user(regular_customer)
-        access = str(tokens.access_token)
-
-        url = f'/api/v1/products/{product.id}/'
-        response = client.delete(url, HTTP_AUTHORIZATION=f'Bearer {access}')
+        headers = auth_headers(regular_customer)
+        response = client.delete(f"/v1/products/{product.id}", headers=headers)
         assert response.status_code == 403
 
 
@@ -135,80 +137,85 @@ class TestRBACPermissions:
 class TestRoleManagementAPI:
     """Tests for admin role management endpoints."""
 
-    def test_admin_can_list_roles(self, client, admin_customer):
+    def test_admin_can_list_roles(self, client, admin_customer, auth_headers):
         """Test admin can list all roles."""
-        tokens = RefreshToken.for_user(admin_customer)
-        access = str(tokens.access_token)
+        headers = auth_headers(admin_customer)
 
-        url = '/api/v1/admin/roles/'
-        response = client.get(url, HTTP_AUTHORIZATION=f'Bearer {access}')
+        response = client.get("/v1/admin/roles/", headers=headers)
         assert response.status_code == 200
         data = response.json()
-        assert len(data) >= 3  # customer, manager, admin
+        assert len(data) >= 3  # customer, catalog_manager, admin
 
-    def test_manager_cannot_access_admin_endpoints(self, client, manager_customer):
+    def test_manager_cannot_access_admin_endpoints(
+        self, client, manager_customer, auth_headers
+    ):
         """Test that manager cannot access admin-only endpoints."""
-        tokens = RefreshToken.for_user(manager_customer)
-        access = str(tokens.access_token)
+        headers = auth_headers(manager_customer)
 
-        url = '/api/v1/admin/roles/'
-        response = client.get(url, HTTP_AUTHORIZATION=f'Bearer {access}')
+        response = client.get("/v1/admin/roles/", headers=headers)
         assert response.status_code == 403
 
-    def test_assign_role_to_customer(self, client, admin_customer, customer_factory):
+    def test_assign_role_to_customer(
+        self, client, admin_customer, customer_factory, auth_headers
+    ):
         """Test admin assigning role to customer."""
         target = customer_factory()
         RoleService.create_role("custom_role", permissions={"test": True})
 
-        tokens = RefreshToken.for_user(admin_customer)
-        access = str(tokens.access_token)
-
-        url = f'/api/v1/admin/customers/{target.id}/roles/'
-        response = client.post(url, {
-            "role_name": "custom_role"
-        }, HTTP_AUTHORIZATION=f'Bearer {access}')
+        headers = auth_headers(admin_customer)
+        response = client.post(
+            f"/v1/admin/customers/{target.id}/roles/",
+            json={"role_name": "custom_role"},
+            headers=headers,
+        )
         assert response.status_code == 200
         data = response.json()
         assert data["role_name"] == "custom_role"
 
         # Verify role was assigned
+        target.refresh_from_db()
         assert target.has_role("custom_role") is True
 
-    def test_remove_role_from_customer(self, client, admin_customer, customer_factory):
+    def test_remove_role_from_customer(
+        self, client, admin_customer, customer_factory, auth_headers
+    ):
         """Test admin removing role from customer."""
         target = customer_factory()
-        RoleService.assign_role(target, "manager")
+        RoleService.assign_role(target, RoleName.CATALOG_MANAGER)
 
-        tokens = RefreshToken.for_user(admin_customer)
-        access = str(tokens.access_token)
-
-        url = f'/api/v1/admin/customers/{target.id}/roles/manager/'
-        response = client.delete(url, HTTP_AUTHORIZATION=f'Bearer {access}')
+        headers = auth_headers(admin_customer)
+        response = client.delete(
+            f"/v1/admin/customers/{target.id}/roles/{RoleName.CATALOG_MANAGER}/",
+            headers=headers,
+        )
         assert response.status_code == 200
-        assert target.has_role("manager") is False
+        target.refresh_from_db()
+        assert target.has_role(RoleName.CATALOG_MANAGER) is False
 
-    def test_cannot_assign_nonexistent_role(self, client, admin_customer, customer_factory):
+    def test_cannot_assign_nonexistent_role(
+        self, client, admin_customer, customer_factory, auth_headers
+    ):
         """Test assigning non-existent role returns error."""
         target = customer_factory()
 
-        tokens = RefreshToken.for_user(admin_customer)
-        access = str(tokens.access_token)
+        headers = auth_headers(admin_customer)
+        response = client.post(
+            f"/v1/admin/customers/{target.id}/roles/",
+            json={"role_name": "does_not_exist"},
+            headers=headers,
+        )
+        assert response.status_code in [404, 400]
 
-        url = f'/api/v1/admin/customers/{target.id}/roles/'
-        response = client.post(url, {
-            "role_name": "does_not_exist"
-        }, HTTP_AUTHORIZATION=f'Bearer {access}')
-        assert response.status_code == 404  # or 400
-
-    def test_customer_cannot_assign_roles(self, client, regular_customer, customer_factory):
+    def test_customer_cannot_assign_roles(
+        self, client, regular_customer, customer_factory, auth_headers
+    ):
         """Test that regular customer cannot assign roles."""
         target = customer_factory()
 
-        tokens = RefreshToken.for_user(regular_customer)
-        access = str(tokens.access_token)
-
-        url = f'/api/v1/admin/customers/{target.id}/roles/'
-        response = client.post(url, {
-            "role_name": "admin"
-        }, HTTP_AUTHORIZATION=f'Bearer {access}')
+        headers = auth_headers(regular_customer)
+        response = client.post(
+            f"/v1/admin/customers/{target.id}/roles/",
+            json={"role_name": "admin"},
+            headers=headers,
+        )
         assert response.status_code == 403

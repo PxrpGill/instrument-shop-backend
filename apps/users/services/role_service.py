@@ -1,15 +1,17 @@
 """
 Service layer for Role management.
 """
+
 from typing import Optional, List, Dict, Any
 from django.db import transaction
 from django.core.exceptions import ObjectDoesNotExist
 from apps.users.models import Customer, Role, CustomerRole
+from apps.users.constants import Permission, RoleName
 from core.auth.exceptions import (
     PermissionDeniedError,
     RoleNotFoundError,
     CustomerRoleAssignmentError,
-    InsufficientPrivilegesError
+    InsufficientPrivilegesError,
 )
 
 
@@ -29,28 +31,28 @@ class RoleService:
     @staticmethod
     def get_all_roles() -> List[Role]:
         """Получение всех активных ролей."""
-        return Role.objects.filter(is_active=True).order_by('name')
+        return Role.objects.filter(is_active=True).order_by("name")
 
     @staticmethod
     def create_role(
         name: str,
         permissions: Dict[str, bool],
         description: str = "",
-        created_by: Optional[Customer] = None
+        created_by: Optional[Customer] = None,
     ) -> Role:
         """Создание новой роли."""
         if Role.objects.filter(name=name).exists():
             raise CustomerRoleAssignmentError(f"Роль с именем '{name}' уже существует")
 
         role = Role.objects.create(
-            name=name,
-            permissions=permissions,
-            description=description
+            name=name, permissions=permissions, description=description
         )
         return role
 
     @staticmethod
-    def update_role(role: Role, permissions: Dict[str, bool], description: str = None) -> Role:
+    def update_role(
+        role: Role, permissions: Dict[str, bool], description: str = None
+    ) -> Role:
         """Обновление роли."""
         role.permissions = permissions
         if description is not None:
@@ -78,9 +80,7 @@ class RoleService:
     @staticmethod
     @transaction.atomic
     def assign_role(
-        customer: Customer,
-        role_name: str,
-        assigned_by: Optional[Customer] = None
+        customer: Customer, role_name: str, assigned_by: Optional[Customer] = None
     ) -> CustomerRole:
         """
         Назначение роли клиенту.
@@ -108,18 +108,14 @@ class RoleService:
             )
 
         customer_role = CustomerRole.objects.create(
-            customer=customer,
-            role=role,
-            assigned_by=assigned_by
+            customer=customer, role=role, assigned_by=assigned_by
         )
         return customer_role
 
     @staticmethod
     @transaction.atomic
     def remove_role(
-        customer: Customer,
-        role_name: str,
-        removed_by: Optional[Customer] = None
+        customer: Customer, role_name: str, removed_by: Optional[Customer] = None
     ) -> bool:
         """
         Удаление роли у клиента.
@@ -139,10 +135,7 @@ class RoleService:
         if not role:
             raise RoleNotFoundError(role_name)
 
-        deleted, _ = CustomerRole.objects.filter(
-            customer=customer,
-            role=role
-        ).delete()
+        deleted, _ = CustomerRole.objects.filter(customer=customer, role=role).delete()
 
         return deleted > 0
 
@@ -164,7 +157,7 @@ class RoleService:
             True если клиент имеет разрешение
         """
         # Админы имеют все разрешения
-        if customer.has_role('admin'):
+        if customer.has_role(RoleName.ADMIN):
             return True
 
         # Проверяем через роли
@@ -184,7 +177,9 @@ class RoleService:
         )
 
     @staticmethod
-    def require_permission(customer: Customer, *permissions: str, require_all: bool = True) -> bool:
+    def require_permission(
+        customer: Customer, *permissions: str, require_all: bool = True
+    ) -> bool:
         """
         Проверка наличия разрешений.
         Выбрасывает PermissionDeniedError если недостаточно прав.
@@ -194,15 +189,13 @@ class RoleService:
             permissions: Список требуемых разрешений
             require_all: True если нужны все разрешения, False если хотя бы одно
         """
-        if customer.has_role('admin'):
+        if customer.has_role(RoleName.ADMIN):
             return True
 
         if require_all:
             for perm in permissions:
                 if not customer.has_permission(perm):
-                    raise PermissionDeniedError(
-                        f"Требуется разрешение: {perm}"
-                    )
+                    raise PermissionDeniedError(f"Требуется разрешение: {perm}")
             return True
         else:
             for perm in permissions:
@@ -238,35 +231,35 @@ class RoleService:
             Словарь созданных ролей
         """
         default_roles = {
-            'customer': {
-                'description': 'Обычный клиент - может только просматривать товары и управлять профилем',
-                'permissions': {
-                    'view_product': True,
-                    'view_category': True,
-                    'view_own_profile': True,
-                    'edit_own_profile': True,
-                }
+            RoleName.CUSTOMER: {
+                "description": "Обычный клиент - может только просматривать товары и управлять профилем",
+                "permissions": {
+                    Permission.VIEW_PRODUCT: True,
+                    Permission.VIEW_CATEGORY: True,
+                    Permission.VIEW_OWN_PROFILE: True,
+                    Permission.EDIT_OWN_PROFILE: True,
+                },
             },
-            'manager': {
-                'description': 'Менеджер - управление товарами и категориями',
-                'permissions': {
-                    'view_product': True,
-                    'create_product': True,
-                    'edit_product': True,
-                    'delete_product': True,
-                    'view_category': True,
-                    'create_category': True,
-                    'edit_category': True,
-                    'delete_category': True,
-                    'view_customer': True,
-                }
+            RoleName.CATALOG_MANAGER: {
+                "description": "Менеджер каталога - управление товарами, категориями и публикациями",
+                "permissions": {
+                    Permission.VIEW_PRODUCT: True,
+                    Permission.CREATE_PRODUCT: True,
+                    Permission.EDIT_PRODUCT: True,
+                    Permission.DELETE_PRODUCT: True,
+                    Permission.PUBLISH_PRODUCT: True,
+                    Permission.MANAGE_AVAILABILITY: True,
+                    Permission.VIEW_CATEGORY: True,
+                    Permission.CREATE_CATEGORY: True,
+                    Permission.EDIT_CATEGORY: True,
+                    Permission.DELETE_CATEGORY: True,
+                    Permission.VIEW_CUSTOMER: True,
+                },
             },
-            'admin': {
-                'description': 'Администратор - полный доступ ко всем функциям системы',
-                'permissions': {
-                    '*': True  # Wildcard - все разрешения
-                }
-            }
+            RoleName.ADMIN: {
+                "description": "Администратор - полный доступ ко всем функциям системы",
+                "permissions": {Permission.WILDCARD: True},  # Wildcard - все разрешения
+            },
         }
 
         created_roles = {}
@@ -274,10 +267,10 @@ class RoleService:
             role, created = Role.objects.get_or_create(
                 name=role_name,
                 defaults={
-                    'description': role_data['description'],
-                    'permissions': role_data['permissions'],
-                    'is_active': True
-                }
+                    "description": role_data["description"],
+                    "permissions": role_data["permissions"],
+                    "is_active": True,
+                },
             )
             created_roles[role_name] = role
 

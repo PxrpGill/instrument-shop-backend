@@ -5,8 +5,7 @@ Tests for public API (storefront endpoints without authentication).
 import pytest
 from django.test import Client
 
-from apps.products.models import (Category, Product, ProductImage,
-                                  ProductStatusChoices)
+from apps.products.models import Category, Product, ProductImage, ProductStatusChoices
 
 
 @pytest.fixture

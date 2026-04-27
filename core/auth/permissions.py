@@ -1,8 +1,10 @@
 """
 Custom permission classes for Django Ninja RBAC system.
 """
+
 from typing import TYPE_CHECKING
 from apps.users.models import Customer
+from apps.users.constants import RoleName
 from core.auth.exceptions import PermissionDeniedError, InsufficientPrivilegesError
 
 if TYPE_CHECKING:
@@ -19,7 +21,7 @@ class RolePermission:
         self.role_names = role_names
 
     def __call__(self, request: "Request", operation) -> bool:
-        customer = getattr(request, 'customer', None)
+        customer = getattr(request, "customer", None)
         if not customer:
             return False
 
@@ -39,7 +41,7 @@ class HasPermission:
         self.require_all = require_all
 
     def __call__(self, request: "Request", operation) -> bool:
-        customer = getattr(request, 'customer', None)
+        customer = getattr(request, "customer", None)
         if not customer:
             return False
 
@@ -59,14 +61,14 @@ class IsAdmin(RolePermission):
     """Shortcut for admin-only access."""
 
     def __init__(self):
-        super().__init__('admin')
+        super().__init__(RoleName.ADMIN)
 
 
 class IsAuthenticated:
     """Ensures the request is made by an authenticated user."""
 
     def __call__(self, request: "Request", operation) -> bool:
-        return hasattr(request, 'customer') and request.customer is not None
+        return hasattr(request, "customer") and request.customer is not None
 
 
 class HasRoleMixin:
@@ -74,7 +76,7 @@ class HasRoleMixin:
 
     @staticmethod
     def get_customer_from_request(request: "Request") -> Customer:
-        customer = getattr(request, 'customer', None)
+        customer = getattr(request, "customer", None)
         if not customer:
             raise ValueError("Authentication required")
         return customer
@@ -89,8 +91,10 @@ class HasRoleMixin:
         )
 
     @staticmethod
-    def require_permission(customer: Customer, *permissions: str, require_all: bool = True) -> bool:
-        if customer.has_role('admin'):
+    def require_permission(
+        customer: Customer, *permissions: str, require_all: bool = True
+    ) -> bool:
+        if customer.has_role(RoleName.ADMIN):
             return True
 
         if require_all:

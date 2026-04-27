@@ -6,28 +6,54 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('products', '0002_productimage'),
+        ("products", "0002_productimage"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='product',
-            name='availability',
-            field=models.CharField(choices=[('in_stock', 'In Stock'), ('out_of_stock', 'Out of Stock'), ('on_request', 'On Request')], default='in_stock', help_text='Product availability: in_stock, out_of_stock, on_request', max_length=20),
+            model_name="product",
+            name="availability",
+            field=models.CharField(
+                choices=[
+                    ("in_stock", "In Stock"),
+                    ("out_of_stock", "Out of Stock"),
+                    ("on_request", "On Request"),
+                ],
+                default="in_stock",
+                help_text="Product availability: in_stock, out_of_stock, on_request",
+                max_length=20,
+            ),
         ),
         migrations.AddField(
-            model_name='product',
-            name='brand',
-            field=models.CharField(blank=True, default='', help_text='Product brand', max_length=255),
+            model_name="product",
+            name="brand",
+            field=models.CharField(
+                blank=True, default="", help_text="Product brand", max_length=255
+            ),
         ),
         migrations.AddField(
-            model_name='product',
-            name='sku',
-            field=models.CharField(blank=True, help_text='Stock keeping unit ( SKU)', max_length=100, null=True, unique=True),
+            model_name="product",
+            name="sku",
+            field=models.CharField(
+                blank=True,
+                help_text="Stock keeping unit ( SKU)",
+                max_length=100,
+                null=True,
+                unique=True,
+            ),
         ),
         migrations.AddField(
-            model_name='product',
-            name='status',
-            field=models.CharField(choices=[('draft', 'Draft'), ('published', 'Published'), ('archived', 'Archived')], default='draft', help_text='Product status: draft, published, archived', max_length=20),
+            model_name="product",
+            name="status",
+            field=models.CharField(
+                choices=[
+                    ("draft", "Draft"),
+                    ("published", "Published"),
+                    ("archived", "Archived"),
+                ],
+                default="draft",
+                help_text="Product status: draft, published, archived",
+                max_length=20,
+            ),
         ),
     ]

@@ -6,12 +6,17 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('products', '0003_product_availability_product_brand_product_sku_and_more'),
+        ("products", "0003_product_availability_product_brand_product_sku_and_more"),
     ]
 
     operations = [
         migrations.AddConstraint(
-            model_name='productimage',
-            constraint=models.UniqueConstraint(condition=models.Q(('is_primary', True)), fields=('product',), name='unique_primary_image_per_product', violation_error_message='Product already has a primary image.'),
+            model_name="productimage",
+            constraint=models.UniqueConstraint(
+                condition=models.Q(("is_primary", True)),
+                fields=("product",),
+                name="unique_primary_image_per_product",
+                violation_error_message="Product already has a primary image.",
+            ),
         ),
     ]

@@ -1,10 +1,17 @@
 """
 Tests for RoleService.
 """
+
 import pytest
 from apps.users.models import Role, Customer, CustomerRole
+from apps.users.constants import RoleName, Permission
 from apps.users.services.role_service import RoleService
-from core.auth.exceptions import RoleNotFoundError, CustomerRoleAssignmentError, PermissionDeniedError, InsufficientPrivilegesError
+from core.auth.exceptions import (
+    RoleNotFoundError,
+    CustomerRoleAssignmentError,
+    PermissionDeniedError,
+    InsufficientPrivilegesError,
+)
 
 
 @pytest.mark.django_db
@@ -13,10 +20,12 @@ class TestRoleService:
 
     def test_get_role_by_name(self):
         """Test fetching role by name."""
-        Role.objects.create(name="admin", permissions={})
-        role = RoleService.get_role_by_name("admin")
+        # Use unique name to avoid conflict
+        unique_name = "test_role_by_name"
+        Role.objects.create(name=unique_name, permissions={})
+        role = RoleService.get_role_by_name(unique_name)
         assert role is not None
-        assert role.name == "admin"
+        assert role.name == unique_name
 
     def test_get_role_by_name_not_found(self):
         """Test fetching non-existent role returns None."""
@@ -25,25 +34,32 @@ class TestRoleService:
 
     def test_get_role_by_id(self):
         """Test fetching role by ID."""
-        role = Role.objects.create(name="manager", permissions={})
+        # Use unique name to avoid conflict
+        unique_name = "test_role_by_id"
+        role = Role.objects.create(name=unique_name, permissions={})
         fetched = RoleService.get_role_by_id(role.id)
         assert fetched == role
 
     def test_get_all_roles(self):
         """Test listing all roles."""
-        Role.objects.create(name="r1", permissions={})
-        Role.objects.create(name="r2", permissions={})
+        # Get initial count (default roles: customer, catalog_manager, admin)
+        initial_count = Role.objects.count()
+
+        Role.objects.create(name="test_r1", permissions={})
+        Role.objects.create(name="test_r2", permissions={})
+
         roles = RoleService.get_all_roles()
-        assert len(roles) == 2
+        # Should have initial + 2 new
+        assert len(roles) == initial_count + 2
+
         names = {r.name for r in roles}
-        assert names == {"r1", "r2"}
+        assert "test_r1" in names
+        assert "test_r2" in names
 
     def test_create_role(self):
         """Test creating a new role."""
         role = RoleService.create_role(
-            name="editor",
-            description="Editor role",
-            permissions={"edit": True}
+            name="editor", description="Editor role", permissions={"edit": True}
         )
         assert role.name == "editor"
         assert role.description == "Editor role"
@@ -59,9 +75,7 @@ class TestRoleService:
         """Test updating existing role."""
         role = Role.objects.create(name="update_test", permissions={"old": True})
         RoleService.update_role(
-            role=role,
-            permissions={"new": False},
-            description="New description"
+            role=role, permissions={"new": False}, description="New description"
         )
         role.refresh_from_db()
         assert role.description == "New description"
@@ -140,22 +154,22 @@ class TestRoleService:
     def test_has_permission_admin_bypasses(self, customer_factory):
         """Test admin role bypasses permission checks."""
         customer = customer_factory()
-        RoleService.assign_role(customer, "admin")
+        RoleService.assign_role(customer, RoleName.ADMIN)
 
         assert RoleService.has_permission(customer, "anything") is True
 
     def test_require_role_success(self, customer_factory):
         """Test require_role passes when customer has role."""
         customer = customer_factory()
-        RoleService.assign_role(customer, "manager")
+        RoleService.assign_role(customer, RoleName.CATALOG_MANAGER)
         # Should not raise
-        RoleService.require_role(customer, "manager")
+        RoleService.require_role(customer, RoleName.CATALOG_MANAGER)
 
     def test_require_role_failure(self, customer_factory):
         """Test require_role raises when no role."""
         customer = customer_factory()
         with pytest.raises(InsufficientPrivilegesError):
-            RoleService.require_role(customer, "admin")
+            RoleService.require_role(customer, RoleName.ADMIN)
 
     def test_require_permission_success(self, customer_factory):
         """Test require_permission passes."""
@@ -168,7 +182,7 @@ class TestRoleService:
     def test_require_permission_admin_bypass(self, customer_factory):
         """Test admin bypasses permission check."""
         customer = customer_factory()
-        RoleService.assign_role(customer, "admin")
+        RoleService.assign_role(customer, RoleName.ADMIN)
         RoleService.require_permission(customer, "impossible_permission")
 
     def test_require_permission_failure(self, customer_factory):
@@ -228,12 +242,12 @@ class TestRoleService:
         """Test creation of default system roles."""
         roles = RoleService.initialize_default_roles()
 
-        assert "customer" in roles
-        assert "manager" in roles
-        assert "admin" in roles
+        assert RoleName.CUSTOMER in roles
+        assert RoleName.CATALOG_MANAGER in roles
+        assert RoleName.ADMIN in roles
 
-        assert roles["customer"].has_permission("view_product") is True
-        assert roles["admin"].has_permission("*") is True
+        assert roles[RoleName.CUSTOMER].has_permission(Permission.VIEW_PRODUCT) is True
+        assert roles[RoleName.ADMIN].has_permission(Permission.WILDCARD) is True
 
     def test_get_customer_roles(self, customer_factory):
         """Test getting all roles for a customer."""

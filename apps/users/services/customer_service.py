@@ -1,5 +1,4 @@
 from django.contrib.auth.hashers import check_password, make_password
-from rest_framework_simplejwt.tokens import RefreshToken
 from typing import Optional
 
 from apps.users.models import Customer
@@ -39,10 +38,11 @@ class CustomerService:
     @staticmethod
     def get_customer_with_roles(customer_id: str) -> Optional[Customer]:
         """Получение клиента с предзагрузкой ролей."""
-        return Customer.objects.prefetch_related('roles').filter(
-            id=customer_id,
-            is_active=True
-        ).first()
+        return (
+            Customer.objects.prefetch_related("roles")
+            .filter(id=customer_id, is_active=True)
+            .first()
+        )
 
     @staticmethod
     def authenticate(email: str, password: str) -> Optional[Customer]:
@@ -64,30 +64,21 @@ class CustomerService:
     @staticmethod
     def generate_tokens(customer: Customer) -> dict:
         """
-        Генерация JWT токенов для клиента с включением ролей и permissions.
-
+        Генерация JWT токенов для клиента.
         Returns:
             Словарь с access и refresh токенами
         """
+        from rest_framework_simplejwt.tokens import RefreshToken
+
         refresh = RefreshToken()
 
-        # Базовые claims
-        refresh['user_id'] = str(customer.id)
-        refresh['email'] = customer.email
-
-        # Добавляем роли и permissions в refresh токен
-        roles = list(customer.roles.filter(is_active=True).values_list('name', flat=True))
-        refresh['roles'] = roles
-
-        # Собираем все permissions
-        refresh['permissions'] = customer.get_permissions()
-
-        # Добавляем флаг is_admin для быстрой проверки
-        refresh['is_admin'] = customer.has_role('admin')
+        # Only set standard claims that SimpleJWT expects
+        refresh["user_id"] = str(customer.id)
+        refresh["email"] = customer.email
 
         return {
-            'access': str(refresh.access_token),
-            'refresh': str(refresh),
+            "access": str(refresh.access_token),
+            "refresh": str(refresh),
         }
 
     @staticmethod
@@ -111,7 +102,9 @@ class CustomerService:
         return customer
 
     @staticmethod
-    def change_password(customer: Customer, old_password: str, new_password: str) -> bool:
+    def change_password(
+        customer: Customer, old_password: str, new_password: str
+    ) -> bool:
         """Смена пароля клиента. Возвращает True при успехе."""
         if not CustomerService.verify_password(old_password, customer.password_hash):
             return False

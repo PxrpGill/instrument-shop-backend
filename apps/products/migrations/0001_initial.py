@@ -7,42 +7,72 @@ class Migration(migrations.Migration):
 
     initial = True
 
-    dependencies = [
-    ]
+    dependencies = []
 
     operations = [
         migrations.CreateModel(
-            name='Category',
+            name="Category",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('name', models.CharField(max_length=255, unique=True)),
-                ('slug', models.SlugField(blank=True, max_length=255, unique=True)),
-                ('image', models.ImageField(blank=True, null=True, upload_to='categories/')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                ("name", models.CharField(max_length=255, unique=True)),
+                ("slug", models.SlugField(blank=True, max_length=255, unique=True)),
+                (
+                    "image",
+                    models.ImageField(blank=True, null=True, upload_to="categories/"),
+                ),
             ],
             options={
-                'verbose_name': 'Category',
-                'verbose_name_plural': 'Categories',
-                'ordering': ['name'],
+                "verbose_name": "Category",
+                "verbose_name_plural": "Categories",
+                "ordering": ["name"],
             },
         ),
         migrations.CreateModel(
-            name='Product',
+            name="Product",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('name', models.CharField(max_length=255)),
-                ('description', models.TextField(blank=True)),
-                ('parameters', models.JSONField(blank=True, default=dict, help_text='Flexible parameters like size, color, volume, etc.')),
-                ('price', models.DecimalField(decimal_places=2, max_digits=10)),
-                ('categories', models.ManyToManyField(blank=True, related_name='products', to='products.category')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                ("name", models.CharField(max_length=255)),
+                ("description", models.TextField(blank=True)),
+                (
+                    "parameters",
+                    models.JSONField(
+                        blank=True,
+                        default=dict,
+                        help_text="Flexible parameters like size, color, volume, etc.",
+                    ),
+                ),
+                ("price", models.DecimalField(decimal_places=2, max_digits=10)),
+                (
+                    "categories",
+                    models.ManyToManyField(
+                        blank=True, related_name="products", to="products.category"
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Product',
-                'verbose_name_plural': 'Products',
-                'ordering': ['-created_at'],
+                "verbose_name": "Product",
+                "verbose_name_plural": "Products",
+                "ordering": ["-created_at"],
             },
         ),
     ]
