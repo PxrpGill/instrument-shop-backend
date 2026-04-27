@@ -1,4 +1,5 @@
 from ninja import Router
+from ninja.errors import HttpError
 from django.http import HttpRequest
 from django.db import transaction
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -27,7 +28,7 @@ def get_customer_from_request(request: HttpRequest) -> Customer:
     """Получение текущего клиента из запроса."""
     auth_result = jwt_auth.authenticate(request)
     if not auth_result:
-        raise ValueError("Требуется авторизация")
+        raise HttpError(status_code=401, message="Требуется авторизация")
     customer, token = auth_result
     return customer
 
