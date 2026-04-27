@@ -1,4 +1,4 @@
-# 04 Public Catalog API
+# 04 Public Catalog API ✅
 
 ### BE-011 Create public categories list endpoint
 
