@@ -177,6 +177,37 @@ class TestProductsAPI:
 
         assert not Product.objects.filter(id=product.id).exists()
 
+    def test_create_product_with_categories(
+        self, client, manager_customer, category_factory, auth_headers
+    ):
+        """Test creating product with category_ids."""
+        category1 = category_factory("Guitars")
+        category2 = category_factory("Electric")
+        
+        headers = auth_headers(manager_customer)
+        response = client.post(
+            "/v1/products/",
+            json={
+                "name": "Categorized Product",
+                "price": "299.99",
+                "availability": "in_stock",
+                "brand": "TestBrand",
+                "category_ids": [category1.id, category2.id],
+            },
+            headers=headers,
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["name"] == "Categorized Product"
+        
+        # Verify categories were set
+        from apps.products.models import Product
+        product = Product.objects.get(id=data["id"])
+        assert product.categories.count() == 2
+        category_names = {c.name for c in product.categories.all()}
+        assert "Guitars" in category_names
+        assert "Electric" in category_names
+
     def test_manager_can_update_availability(
         self, client, manager_customer, product_factory, auth_headers
     ):
@@ -260,10 +291,58 @@ class TestCategoriesAPI:
         """Test catalog_manager can delete category."""
         category = category_factory("To Delete")
         headers = auth_headers(manager_customer)
-
         response = client.delete(f"/v1/categories/{category.id}", headers=headers)
         assert response.status_code == 200
         assert not Category.objects.filter(id=category.id).exists()
+
+    def test_list_products_by_category(
+        self, client, regular_customer, product_factory, category_factory, auth_headers
+    ):
+        """Test listing products by category."""
+        category = category_factory("Guitars")
+        product1 = product_factory(name="Guitar 1", price=100)
+        product2 = product_factory(name="Guitar 2", price=200)
+        product1.categories.add(category)
+        product2.categories.add(category)
+        
+        # Product not in category
+        product_factory(name="Not in category", price=300)
+        
+        headers = auth_headers(regular_customer)
+        response = client.get(f"/v1/categories/{category.id}/products", headers=headers)
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 2
+        product_names = {p["name"] for p in data}
+        assert "Guitar 1" in product_names
+        assert "Guitar 2" in product_names
+        assert "Not in category" not in product_names
+
+    def test_list_products_by_category_requires_permission(
+        self, client, regular_customer, category_factory, auth_headers
+    ):
+        """Test that listing products by category requires view_product permission."""
+        category = category_factory("Guitars")
+        
+        # Create a customer without view_product permission
+        from apps.users.services.customer_service import CustomerService
+        from apps.users.services.role_service import RoleService
+        from apps.users.constants import Permission
+        
+        no_view_customer = CustomerService.create_customer(
+            email="no_view@example.com",
+            password="testpass123",
+            first_name="No",
+            last_name="View",
+            phone="+1234567890",
+        )
+        # Don't assign any role that grants view_product
+        
+        headers = auth_headers(no_view_customer)
+        response = client.get(f"/v1/categories/{category.id}/products", headers=headers)
+        
+        assert response.status_code == 403
 
     def test_customer_cannot_update_category(
         self, client, regular_customer, category_factory, auth_headers
@@ -351,6 +430,107 @@ class TestProductImagesAPI:
         )
         # Should NOT be 200 (either 403 for permission or 422 for validation)
         assert response.status_code != 200
+
+    def test_list_product_images_requires_permission(
+        self, client, regular_customer, product_factory, auth_headers
+    ):
+        """Test that listing product images requires view_product permission."""
+        product = product_factory()
+        
+        # Create a customer without view_product permission
+        from apps.users.services.customer_service import CustomerService
+        from apps.users.services.role_service import RoleService
+        from apps.users.constants import Permission
+        
+        no_view_customer = CustomerService.create_customer(
+            email="no_view2@example.com",
+            password="testpass123",
+            first_name="No",
+            last_name="View2",
+            phone="+1234567890",
+        )
+        # Don't assign any role that grants view_product
+        
+        headers = auth_headers(no_view_customer)
+        response = client.get(f"/v1/products/{product.id}/images", headers=headers)
+        
+        assert response.status_code == 403
+
+    def test_list_product_images_success(
+        self, client, manager_customer, product_factory, auth_headers
+    ):
+        """Test that manager can list product images."""
+        product = product_factory()
+        # Create test images
+        from apps.products.models import ProductImage
+        ProductImage.objects.create(product=product, image="test1.jpg", alt_text="Image 1")
+        ProductImage.objects.create(product=product, image="test2.jpg", alt_text="Image 2")
+        
+        headers = auth_headers(manager_customer)
+        response = client.get(f"/v1/products/{product.id}/images", headers=headers)
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 2
+
+    def test_update_product_image_requires_permission(
+        self, client, regular_customer, product_factory, auth_headers
+    ):
+        """Test that updating product image requires edit_product permission."""
+        product = product_factory()
+        from apps.products.models import ProductImage
+        image = ProductImage.objects.create(
+            product=product, image="test.jpg", alt_text="Original"
+        )
+        
+        headers = auth_headers(regular_customer)
+        # Use JSON with image path string (as expected by ProductImageCreateSchema)
+        response = client.put(
+            f"/v1/products/{product.id}/images/{image.id}",
+            json={"image": "test.jpg", "alt_text": "Updated"},
+            headers=headers,
+        )
+        assert response.status_code == 403
+
+    def test_update_product_image_success(
+        self, client, manager_customer, product_factory, auth_headers
+    ):
+        """Test that manager can update product image."""
+        product = product_factory()
+        from apps.products.models import ProductImage
+        image = ProductImage.objects.create(
+            product=product, image="test.jpg", alt_text="Original"
+        )
+        
+        headers = auth_headers(manager_customer)
+        response = client.put(
+            f"/v1/products/{product.id}/images/{image.id}",
+            json={"image": "updated.jpg", "alt_text": "Updated"},
+            headers=headers,
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["alt_text"] == "Updated"
+        
+        # Verify in database
+        image.refresh_from_db()
+        assert image.alt_text == "Updated"
+
+    def test_delete_product_image_requires_permission(
+        self, client, regular_customer, product_factory, auth_headers
+    ):
+        """Test that deleting product image requires edit_product permission."""
+        product = product_factory()
+        from apps.products.models import ProductImage
+        image = ProductImage.objects.create(
+            product=product, image="test.jpg", alt_text="Test"
+        )
+        
+        headers = auth_headers(regular_customer)
+        response = client.delete(
+            f"/v1/products/{product.id}/images/{image.id}", headers=headers
+        )
+        assert response.status_code == 403
 
 
 @pytest.mark.django_db

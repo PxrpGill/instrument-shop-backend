@@ -315,6 +315,35 @@ class TestOrderStatusUpdateSchema:
 class TestSchemaSerialization:
     """Tests for schema serialization correctness."""
 
+    def test_serialize_decimal_function(self):
+        """Test _serialize_decimal function."""
+        from apps.orders.schemas import _serialize_decimal
+        from decimal import Decimal
+        
+        result = _serialize_decimal(Decimal("123.45"))
+        assert result == "123.45"
+        assert isinstance(result, str)
+        
+        result = _serialize_decimal(Decimal("0"))
+        assert result == "0"
+        
+        result = _serialize_decimal(Decimal("-99.99"))
+        assert result == "-99.99"
+
+    def test_serialize_datetime_function(self):
+        """Test _serialize_datetime function."""
+        from apps.orders.schemas import _serialize_datetime
+        from datetime import datetime
+        
+        dt = datetime(2024, 1, 15, 10, 30, 0)
+        result = _serialize_datetime(dt)
+        assert result == "2024-01-15T10:30:00"
+        assert isinstance(result, str)
+        
+        dt2 = datetime(2024, 12, 31, 23, 59, 59)
+        result2 = _serialize_datetime(dt2)
+        assert result2 == "2024-12-31T23:59:59"
+
     def test_full_order_serialization_types(self):
         """Test all fields have correct types after serialization."""
         from apps.orders.models import OrderStatusChoices

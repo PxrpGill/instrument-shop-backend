@@ -1184,3 +1184,43 @@ class TestCancelOrderEndpoint:
 
         # Should get 401 or 403
         assert response.status_code in [401, 403]
+
+    def test_get_nonexistent_order_returns_404(
+        self,
+        client,
+        admin_customer,
+        auth_headers,
+    ):
+        """Test that requesting non-existent order returns 404."""
+        headers = auth_headers(admin_customer)
+        response = client.get("/v1/orders/99999", headers=headers)
+
+        assert response.status_code == 404
+
+    def test_cancel_nonexistent_order_returns_404(
+        self,
+        client,
+        admin_customer,
+        auth_headers,
+    ):
+        """Test that cancelling non-existent order returns 404."""
+        headers = auth_headers(admin_customer)
+        response = client.post("/v1/orders/99999/cancel", headers=headers)
+
+        assert response.status_code == 404
+
+    def test_update_status_nonexistent_order_returns_404(
+        self,
+        client,
+        admin_customer,
+        auth_headers,
+    ):
+        """Test that updating status of non-existent order returns 404."""
+        headers = auth_headers(admin_customer)
+        response = client.put(
+            "/v1/orders/99999/status",
+            json={"status": "processing"},
+            headers=headers,
+        )
+
+        assert response.status_code == 404
