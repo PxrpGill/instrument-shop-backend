@@ -179,6 +179,127 @@ class TestCreateOrderEndpoint:
         assert response.status_code == 200
         assert Order.objects.count() == orders_before + 1
 
+    def test_create_order_zero_quantity(
+        self,
+        client,
+        regular_customer,
+        published_product_factory,
+        auth_headers,
+    ):
+        """
+        Test that zero quantity is rejected (schema validation).
+
+        BE-033: API-level validation should reject invalid quantity.
+        """
+        product = published_product_factory(name="Test Product", price=100.00)
+
+        order_data = {
+            "contact_email": "test@example.com",
+            "items": [{"product_id": product.id, "quantity": 0}],
+        }
+
+        headers = auth_headers(regular_customer)
+        response = client.post("/v1/orders/", json=order_data, headers=headers)
+
+        # Should return 422 (pydantic validation error - quantity must be >= 1)
+        assert response.status_code == 422
+
+    def test_create_order_negative_quantity(
+        self,
+        client,
+        regular_customer,
+        published_product_factory,
+        auth_headers,
+    ):
+        """
+        Test that negative quantity is rejected (schema validation).
+
+        BE-033: API-level validation should reject invalid quantity.
+        """
+        product = published_product_factory(name="Test Product", price=100.00)
+
+        order_data = {
+            "contact_email": "test@example.com",
+            "items": [{"product_id": product.id, "quantity": -1}],
+        }
+
+        headers = auth_headers(regular_customer)
+        response = client.post("/v1/orders/", json=order_data, headers=headers)
+
+        # Should return 422 (pydantic validation error)
+        assert response.status_code == 422
+
+    def test_create_order_empty_items(
+        self,
+        client,
+        regular_customer,
+        auth_headers,
+    ):
+        """
+        Test that empty items list is rejected (schema validation).
+
+        BE-033: API-level validation should reject empty items (min_length=1).
+        """
+        order_data = {
+            "contact_email": "test@example.com",
+            "items": [],
+        }
+
+        headers = auth_headers(regular_customer)
+        response = client.post("/v1/orders/", json=order_data, headers=headers)
+
+        # Should return 422 (pydantic validation error - items min_length=1)
+        assert response.status_code == 422
+
+    def test_create_order_invalid_email(
+        self,
+        client,
+        regular_customer,
+        published_product_factory,
+        auth_headers,
+    ):
+        """
+        Test that invalid email is rejected (schema validation).
+
+        BE-033: API-level validation should reject invalid email format.
+        """
+        product = published_product_factory(name="Test Product", price=100.00)
+
+        order_data = {
+            "contact_email": "not-a-valid-email",
+            "items": [{"product_id": product.id, "quantity": 1}],
+        }
+
+        headers = auth_headers(regular_customer)
+        response = client.post("/v1/orders/", json=order_data, headers=headers)
+
+        # Should return 422 (pydantic EmailStr validation)
+        assert response.status_code == 422
+
+    def test_create_order_missing_contact_email(
+        self,
+        client,
+        regular_customer,
+        published_product_factory,
+        auth_headers,
+    ):
+        """
+        Test that missing contact_email is rejected (schema validation).
+
+        BE-033: API-level validation should require contact_email field.
+        """
+        product = published_product_factory(name="Test Product", price=100.00)
+
+        order_data = {
+            "items": [{"product_id": product.id, "quantity": 1}],
+        }
+
+        headers = auth_headers(regular_customer)
+        response = client.post("/v1/orders/", json=order_data, headers=headers)
+
+        # Should return 422 (pydantic validation - contact_email is required)
+        assert response.status_code == 422
+
 
 @pytest.mark.django_db
 class TestOrderPriceSnapshot:
@@ -574,6 +695,42 @@ class TestListOrdersEndpoint:
         for order in data:
             assert order["status"] == "new"
 
+    def test_catalog_manager_can_list_orders(
+        self,
+        client,
+        manager_customer,
+        regular_customer,
+        order_factory,
+        auth_headers,
+    ):
+        """Test that catalog_manager can list all orders (not just their own)."""
+        # Create orders for regular customer
+        order1 = order_factory(customer=regular_customer)
+        order2 = order_factory(customer=regular_customer)
+
+        # Create another customer with order
+        from apps.users.services.customer_service import CustomerService
+
+        other_customer = CustomerService.create_customer(
+            email="other@example.com",
+            password="testpass123",
+            first_name="Other",
+            last_name="Customer",
+            phone="+9876543210",
+        )
+        order3 = order_factory(customer=other_customer)
+
+        headers = auth_headers(manager_customer)
+        response = client.get("/v1/orders/", headers=headers)
+
+        assert response.status_code == 200
+        data = response.json()
+
+        # Manager should see all orders (3 total)
+        assert len(data) == 3
+        response_ids = {o["id"] for o in data}
+        assert response_ids == {order1.id, order2.id, order3.id}
+
 
 @pytest.mark.django_db
 class TestGetOrderEndpoint:
@@ -634,6 +791,24 @@ class TestGetOrderEndpoint:
         order = order_factory(customer=regular_customer)
 
         headers = auth_headers(admin_customer)
+        response = client.get(f"/v1/orders/{order.id}", headers=headers)
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["id"] == order.id
+
+    def test_catalog_manager_can_view_any_order(
+        self,
+        client,
+        manager_customer,
+        regular_customer,
+        order_factory,
+        auth_headers,
+    ):
+        """Test that catalog_manager can view any customer's order."""
+        order = order_factory(customer=regular_customer)
+
+        headers = auth_headers(manager_customer)
         response = client.get(f"/v1/orders/{order.id}", headers=headers)
 
         assert response.status_code == 200
@@ -971,6 +1146,30 @@ class TestCancelOrderEndpoint:
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "cancelled"
+
+    def test_catalog_manager_can_cancel_orders(
+        self,
+        client,
+        manager_customer,
+        regular_customer,
+        order_factory,
+        auth_headers,
+    ):
+        """Test that catalog_manager can cancel any customer's order."""
+        order = order_factory(
+            customer=regular_customer, status=OrderStatusChoices.NEW
+        )
+
+        headers = auth_headers(manager_customer)
+        response = client.post(f"/v1/orders/{order.id}/cancel", headers=headers)
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "cancelled"
+
+        # Verify in database
+        order.refresh_from_db()
+        assert order.status == OrderStatusChoices.CANCELLED
 
     def test_guest_cannot_cancel_order(
         self,

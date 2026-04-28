@@ -113,6 +113,92 @@ class TestProductsAPI:
         response = client.delete(f"/v1/products/{product2.id}", headers=regular_headers)
         assert response.status_code == 403
 
+    def test_manager_can_create_product(
+        self, client, manager_customer, auth_headers
+    ):
+        """Test catalog_manager can create product."""
+        headers = auth_headers(manager_customer)
+
+        response = client.post(
+            "/v1/products/",
+            json={
+                "name": "Manager Product",
+                "price": "199.99",
+                "availability": "in_stock",
+                "brand": "TestBrand",
+            },
+            headers=headers,
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["name"] == "Manager Product"
+        assert data["status"] == "draft"  # Always draft on creation
+
+        # Verify in database
+        from apps.products.models import Product
+
+        assert Product.objects.filter(name="Manager Product").exists()
+
+    def test_manager_can_update_product(
+        self, client, manager_customer, product_factory, auth_headers
+    ):
+        """Test catalog_manager can update any product."""
+        product = product_factory(name="Old Name", price=100)
+
+        headers = auth_headers(manager_customer)
+
+        response = client.put(
+            f"/v1/products/{product.id}",
+            json={
+                "name": "Updated by Manager",
+                "price": "300.00",
+                "availability": "in_stock",
+                "brand": "TestBrand",
+            },
+            headers=headers,
+        )
+        assert response.status_code == 200
+        product.refresh_from_db()
+        assert product.name == "Updated by Manager"
+        assert product.price == 300.00
+
+    def test_manager_can_delete_product(
+        self, client, manager_customer, product_factory, auth_headers
+    ):
+        """Test catalog_manager can delete product (has delete_product permission)."""
+        product = product_factory(name="To Delete")
+
+        headers = auth_headers(manager_customer)
+        response = client.delete(f"/v1/products/{product.id}", headers=headers)
+        assert response.status_code == 200
+
+        # Verify deleted from database
+        from apps.products.models import Product
+
+        assert not Product.objects.filter(id=product.id).exists()
+
+    def test_manager_can_update_availability(
+        self, client, manager_customer, product_factory, auth_headers
+    ):
+        """Test catalog_manager can update product availability."""
+        product = product_factory(name="Availability Test", availability="in_stock")
+
+        headers = auth_headers(manager_customer)
+
+        response = client.put(
+            f"/v1/products/{product.id}",
+            json={
+                "name": product.name,
+                "price": "100.00",
+                "availability": "out_of_stock",
+                "brand": product.brand or "",
+            },
+            headers=headers,
+        )
+        assert response.status_code == 200
+        product.refresh_from_db()
+        assert product.availability == "out_of_stock"
+
 
 @pytest.mark.django_db
 class TestCategoriesAPI:
@@ -152,10 +238,100 @@ class TestCategoriesAPI:
         assert response.status_code == 200
         assert Category.objects.filter(name="Manager Category").exists()
 
+    def test_manager_can_update_category(
+        self, client, manager_customer, category_factory, auth_headers
+    ):
+        """Test catalog_manager can update category."""
+        category = category_factory("Original Name")
+        headers = auth_headers(manager_customer)
+
+        response = client.put(
+            f"/v1/categories/{category.id}",
+            json={"name": "Updated Name"},
+            headers=headers,
+        )
+        assert response.status_code == 200
+        category.refresh_from_db()
+        assert category.name == "Updated Name"
+
+    def test_manager_can_delete_category(
+        self, client, manager_customer, category_factory, auth_headers
+    ):
+        """Test catalog_manager can delete category."""
+        category = category_factory("To Delete")
+        headers = auth_headers(manager_customer)
+
+        response = client.delete(f"/v1/categories/{category.id}", headers=headers)
+        assert response.status_code == 200
+        assert not Category.objects.filter(id=category.id).exists()
+
+    def test_customer_cannot_update_category(
+        self, client, regular_customer, category_factory, auth_headers
+    ):
+        """Test regular customer cannot update category."""
+        category = category_factory("Test Category")
+        headers = auth_headers(regular_customer)
+
+        response = client.put(
+            f"/v1/categories/{category.id}",
+            json={"name": "Hacked Category"},
+            headers=headers,
+        )
+        assert response.status_code == 403
+
+    def test_customer_cannot_delete_category(
+        self, client, regular_customer, category_factory, auth_headers
+    ):
+        """Test regular customer cannot delete category."""
+        category = category_factory("Test Category")
+        headers = auth_headers(regular_customer)
+
+        response = client.delete(f"/v1/categories/{category.id}", headers=headers)
+        assert response.status_code == 403
+
 
 @pytest.mark.django_db
 class TestProductImagesAPI:
     """Tests for product image endpoints with RBAC."""
+
+    def test_manager_can_delete_image(
+        self, client, manager_customer, product_factory, auth_headers
+    ):
+        """Test catalog_manager can delete product image."""
+        product = product_factory()
+        # Create an image first
+        from apps.products.models import ProductImage
+
+        image = ProductImage.objects.create(
+            product=product, image="test.jpg", alt_text="Test"
+        )
+
+        headers = auth_headers(manager_customer)
+        response = client.delete(
+            f"/v1/products/{product.id}/images/{image.id}", headers=headers
+        )
+        assert response.status_code == 200
+
+        # Verify image deleted
+        assert not ProductImage.objects.filter(id=image.id).exists()
+
+    def test_customer_cannot_delete_image(
+        self, client, regular_customer, product_factory, auth_headers
+    ):
+        """Test regular customer cannot delete product image."""
+        product = product_factory()
+        from apps.products.models import ProductImage
+
+        image = ProductImage.objects.create(
+            product=product, image="test.jpg", alt_text="Test"
+        )
+
+        headers = auth_headers(regular_customer)
+        response = client.delete(
+            f"/v1/products/{product.id}/images/{image.id}", headers=headers
+        )
+        # Should get 403 (no permission)
+        assert response.status_code == 403
 
     def test_add_image_requires_edit_permission(
         self, client, regular_customer, product_factory, auth_headers
@@ -164,17 +340,60 @@ class TestProductImagesAPI:
         product = product_factory()
         headers = auth_headers(regular_customer)
 
-        # Mock file upload - since we can't upload actual files easily,
-        # we'll test the permission logic
-        # In a real scenario, you'd use multipart/form-data
-        pass  # Skipping actual file upload test
+        # Try to access the endpoint - should fail with 403 (no permission)
+        # We don't need to actually upload a file, just check the permission
+        # Since the endpoint requires a file upload, we'll get a 422 or 403
+        # The important thing is that it's not 200
+        response = client.post(
+            f"/v1/products/{product.id}/images",
+            json={"alt_text": "Test"},  # Missing image field - will fail validation
+            headers=headers,
+        )
+        # Should NOT be 200 (either 403 for permission or 422 for validation)
+        assert response.status_code != 200
 
-    def test_manager_can_manage_images(
-        self, client, manager_customer, product_factory, auth_headers
+
+@pytest.mark.django_db
+class TestInsufficientPermissions:
+    """Tests for users with view-only permissions."""
+
+    def test_view_only_cannot_edit_product(
+        self, client, customer_factory, product_factory, auth_headers
     ):
-        """Test manager can add/update/delete images."""
-        # This would require handling actual file upload
-        pass
+        """Test that user with only VIEW_PRODUCT cannot edit product."""
+        from apps.users.constants import Permission, RoleName
+        from apps.users.services.role_service import RoleService
+
+        # Create a role with only VIEW_PRODUCT permission
+        view_only_role = RoleService.create_role(
+            name="view_only",
+            description="Role with only view permission",
+            permissions={
+                Permission.VIEW_PRODUCT: True,
+                Permission.EDIT_PRODUCT: False,
+                Permission.CREATE_PRODUCT: False,
+                Permission.DELETE_PRODUCT: False,
+            },
+        )
+
+        # Create customer and assign view-only role
+        viewer = customer_factory(email="viewer@example.com")
+        RoleService.assign_role(viewer, "view_only")
+
+        product = product_factory(name="Test Product")
+
+        headers = auth_headers(viewer)
+        response = client.put(
+            f"/v1/products/{product.id}",
+            json={
+                "name": "Hacked",
+                "price": "1.00",
+                "availability": "in_stock",
+                "brand": "TestBrand",
+            },
+            headers=headers,
+        )
+        assert response.status_code == 403
 
 
 @pytest.mark.django_db

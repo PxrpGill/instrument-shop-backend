@@ -65,8 +65,47 @@
   - Adds `view_order`, `cancel_order`, `manage_order_status` permissions to `catalog_manager` role
 - **Total tests**: 36 in test_api.py + 15 in test_schemas.py = 51 order-related tests
 
+### Task 10 (Tests) ✅ **Completed**
+- BE-031: Tests for public catalog visibility ✅
+  - Tests already existed in `apps/products/tests/test_public_api.py` (13 tests)
+  - Verified all tests pass: `test_list_products_returns_only_published`, `test_get_product_detail_draft_not_found`, `test_get_product_detail_archived_not_found`, `test_get_product_detail_published_only`
+- BE-032: Tests for staff catalog permissions ✅
+  - Added tests in `apps/products/tests/test_api.py` (~12 tests):
+    - `TestProductsAPI`: `test_manager_can_create_product`, `test_manager_can_update_product`, `test_manager_can_delete_product`, `test_manager_can_update_availability`
+    - `TestCategoriesAPI`: `test_manager_can_update_category`, `test_manager_can_delete_category`, `test_customer_cannot_update_category`, `test_customer_cannot_delete_category`
+    - `TestProductImagesAPI`: `test_manager_can_delete_image`, `test_customer_cannot_delete_image`, `test_add_image_requires_edit_permission`
+    - `TestInsufficientPermissions`: `test_view_only_cannot_edit_product`
+- BE-033: Tests for order creation flow validation ✅
+  - Added API validation tests in `apps/orders/tests/test_api.py` (5 tests):
+    - `test_create_order_zero_quantity` (422)
+    - `test_create_order_negative_quantity` (422)
+    - `test_create_order_empty_items` (422)
+    - `test_create_order_invalid_email` (422)
+    - `test_create_order_missing_contact_email` (422)
+- BE-034: Tests for staff order management ✅
+  - Added catalog_manager tests in `apps/orders/tests/test_api.py` (3 tests):
+    - `test_catalog_manager_can_list_orders`
+    - `test_catalog_manager_can_view_any_order`
+    - `test_catalog_manager_can_cancel_orders`
+- **Test coverage**: 91% overall (195 tests total, all passing)
+  - `apps/orders`: 96-100% coverage
+  - `apps/products`: 78-100% coverage
+  - `apps/users`: 0-96% coverage (some API endpoints untested)
+
+### Task 12 (Test Coverage 100%) 🆕 **Pending**
+- BE-035: Achieve 100% test coverage for all apps
+- **Current coverage**: 91% overall (195 tests total)
+- **Target**: 100% coverage
+- **Areas needing work**:
+  - `apps/orders`: 96-100% (fix controllers.py 91%, schemas.py 96%, services.py 96%)
+  - `apps/products`: 78-100% (fix controllers.py 78%, services.py 80%)
+  - `apps/users`: 0-96% (critical: api/auth.py 0%, api/jwt_auth.py 0%, api/role_controllers.py 53%)
+- **Files to create**: ~50-70 new tests
+- **File**: `backlog/mvp/tasks/12-test-coverage-100.md`
+- **Priority**: Medium (quality improvement, not blocking functionality)
+
 ## Known Issues:
-- All tests now passing (**177 tests** total)
+- All tests now passing (**195 tests** total)
 - Code formatted with Black and isort
 - NOTE: `core/tests/test_permissions.py` has import error (`Request` from `ninja` not found) - pre-existing issue unrelated to recent changes
 - **Resolved**: Race condition in order creation now fixed with `select_for_update()` inside `transaction.atomic()`
@@ -75,3 +114,4 @@
 - **Resolved**: Test fixtures no longer mutate shared roles (relies on migration state)
 - **Resolved**: BE-028 fixed - GET /v1/orders/ is now strictly staff-only
 - **Resolved**: BE-030 fixed - Status updates restricted to allowed values only (processing, confirmed, cancelled, completed)
+- **Resolved**: BE-031–BE-034 completed - All catalog and order permission tests added
