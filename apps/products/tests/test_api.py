@@ -516,6 +516,26 @@ class TestProductImagesAPI:
         image.refresh_from_db()
         assert image.alt_text == "Updated"
 
+    def test_manager_can_create_product_image(
+        self, client, manager_customer, product_factory, auth_headers
+    ):
+        """Test manager can create product image (covers controllers.py:209-210)."""
+        product = product_factory(name="Image Test", price=100)
+        
+        headers = auth_headers(manager_customer)
+        response = client.post(
+            f"/v1/products/{product.id}/images",
+            json={"image": "new_image.jpg", "alt_text": "New Image"},
+            headers=headers,
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["alt_text"] == "New Image"
+        
+        # Verify in database
+        from apps.products.models import ProductImage
+        assert ProductImage.objects.filter(product=product, alt_text="New Image").exists()
+
     def test_delete_product_image_requires_permission(
         self, client, regular_customer, product_factory, auth_headers
     ):
@@ -842,6 +862,109 @@ class TestProductImagePrimaryRules:
         # Verify only image2 is primary
         assert image1.is_primary is False
         assert image2.is_primary is True
+
+
+@pytest.mark.django_db
+class TestGetCategoryRequiresPermission:
+    """Tests for get_category endpoint permissions (covers controllers.py:52-54)."""
+
+    def test_get_category_requires_view_category_permission(
+        self, client, manager_customer, category_factory, auth_headers
+    ):
+        """Test that viewing category requires view_category permission."""
+        category = category_factory("Test Category")
+        
+        # Create a customer without view_category permission
+        from apps.users.services.customer_service import CustomerService
+        from apps.users.constants import Permission
+        
+        no_view_customer = CustomerService.create_customer(
+            email="no_view3@example.com",
+            password="testpass123",
+            first_name="No",
+            last_name="View3",
+            phone="+1234567890",
+        )
+        
+        headers = auth_headers(no_view_customer)
+        response = client.get(f"/v1/categories/{category.id}", headers=headers)
+        assert response.status_code == 403
+
+    def test_get_category_nonexistent(
+        self, client, regular_customer, auth_headers
+    ):
+        """Test get_category with non-existent ID."""
+        headers = auth_headers(regular_customer)
+        response = client.get("/v1/categories/99999", headers=headers)
+        assert response.status_code == 404
+
+
+@pytest.mark.django_db
+class TestGetProductRequiresPermission:
+    """Tests for get_product endpoint permissions (covers controllers.py:132-134)."""
+
+    def test_get_product_requires_view_product_permission(
+        self, client, manager_customer, product_factory, auth_headers
+    ):
+        """Test that viewing product requires view_product permission."""
+        product = product_factory(name="Test Product", price=100)
+        
+        # Create a customer without view_product permission
+        from apps.users.services.customer_service import CustomerService
+        from apps.users.constants import Permission
+        
+        no_view_customer = CustomerService.create_customer(
+            email="no_view4@example.com",
+            password="testpass123",
+            first_name="No",
+            last_name="View4",
+            phone="+1234567890",
+        )
+        
+        headers = auth_headers(no_view_customer)
+        response = client.get(f"/v1/products/{product.id}", headers=headers)
+        assert response.status_code == 403
+
+    def test_get_product_nonexistent(
+        self, client, regular_customer, auth_headers
+    ):
+        """Test get_product with non-existent ID."""
+        headers = auth_headers(regular_customer)
+        response = client.get("/v1/products/99999", headers=headers)
+        assert response.status_code == 404
+
+
+@pytest.mark.django_db
+class TestCreateProductImageRequiresPermission:
+    """Tests for create_product_image endpoint permissions (covers controllers.py:206-210)."""
+
+    def test_create_image_requires_edit_product_permission(
+        self, client, regular_customer, product_factory, auth_headers
+    ):
+        """Test that adding image requires edit_product permission."""
+        product = product_factory()
+        headers = auth_headers(regular_customer)
+        
+        # Try to access the endpoint - should fail with 403 (no permission)
+        response = client.post(
+            f"/v1/products/{product.id}/images",
+            json={"image": "test.jpg", "alt_text": "Test"},
+            headers=headers,
+        )
+        # Should get 403 for permission or 422 for validation
+        assert response.status_code in [403, 422]
+
+    def test_create_image_nonexistent_product(
+        self, client, manager_customer, auth_headers
+    ):
+        """Test create_image with non-existent product."""
+        headers = auth_headers(manager_customer)
+        response = client.post(
+            "/v1/products/99999/images",
+            json={"image": "test.jpg", "alt_text": "Test"},
+            headers=headers,
+        )
+        assert response.status_code == 404
 
     def test_database_constraint_prevents_double_primary(self, product_factory):
         """Test that database constraint prevents two primary images."""

@@ -109,12 +109,12 @@ def login(request: HttpRequest, data: CustomerLoginRequest) -> TokenResponse:
 
 
 @router.post("/refresh", response=TokenResponse, summary="Обновление токена")
-def refresh_token(request: TokenRefreshRequest) -> TokenResponse:
+def refresh_token(request: HttpRequest, data: TokenRefreshRequest) -> TokenResponse:
     """
     Обновление access токена с помощью refresh токена.
     """
     try:
-        refresh = RefreshToken(request.refresh)
+        refresh = RefreshToken(data.refresh)
         customer_id = refresh.get("user_id")
 
         if not customer_id:

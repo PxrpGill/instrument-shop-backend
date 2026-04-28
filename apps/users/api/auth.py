@@ -1,12 +1,16 @@
 from typing import Any, Optional
 from ninja.security import HttpBearer
-from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.exceptions import InvalidToken, AuthenticationFailed
 from apps.users.models import Customer
+from apps.users.api.jwt_auth import CustomerJWTAuthentication
 
 
 class CustomerAuth(HttpBearer):
     """Аутентификация для клиентов через JWT токен."""
+
+    def __init__(self):
+        super().__init__()
+        self.auth = CustomerJWTAuthentication()
 
     def authenticate(self, request: Any) -> Optional[Customer]:
         auth_header = request.headers.get('Authorization')
@@ -14,8 +18,7 @@ class CustomerAuth(HttpBearer):
             return None
         
         try:
-            auth = JWTAuthentication()
-            result = auth.authenticate(request)
+            result = self.auth.authenticate(request)
             if result is None:
                 return None
             
@@ -33,14 +36,17 @@ class CustomerAuth(HttpBearer):
 class OptionalCustomerAuth(HttpBearer):
     """Необязательная аутентификация для клиентов."""
 
+    def __init__(self):
+        super().__init__()
+        self.auth = CustomerJWTAuthentication()
+
     def authenticate(self, request: Any) -> Optional[Customer]:
         auth_header = request.headers.get('Authorization')
         if not auth_header:
             return None
         
         try:
-            auth = JWTAuthentication()
-            result = auth.authenticate(request)
+            result = self.auth.authenticate(request)
             if result is None:
                 return None
             

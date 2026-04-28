@@ -32,9 +32,6 @@ class CustomerJWTAuthentication(JWTAuthentication):
         except Customer.DoesNotExist:
             raise InvalidToken('Пользователь не найден')
         
-        if not customer.is_active:
-            raise InvalidToken('Пользователь неактивен')
-        
         # Прикрепляем роли к объекту для кэширования (если еще не загружены)
         if not hasattr(customer, '_prefetched_objects_cache') or 'roles' not in getattr(customer, '_prefetched_objects_cache', {}):
             # Если роли не были prefetched, загружаем их

@@ -143,6 +143,20 @@ class TestRoleControllersAdmin:
         response = admin_client.delete("/v1/admin/roles/99999", headers=headers)
         assert response.status_code == 404
 
+    def test_update_nonexistent_role(self, admin_client, admin_customer, auth_headers):
+        """Test updating nonexistent role returns 404 (covers line 97)."""
+        headers = auth_headers(admin_customer)
+        
+        response = admin_client.put(
+            "/v1/admin/roles/99999",
+            json={
+                "description": "Updated description",
+                "permissions": {"view_product": True}
+            },
+            headers=headers,
+        )
+        assert response.status_code == 404
+
     def test_manager_cannot_access_role_endpoints(self, admin_client, manager_customer, auth_headers):
         """Test that manager cannot access admin role endpoints."""
         headers = auth_headers(manager_customer)
@@ -214,3 +228,69 @@ class TestRoleControllersAdmin:
         data = response.json()
         assert "roles" in data
         assert "permissions" in data
+
+    def test_get_customer_roles_nonexistent_customer(self, admin_client, admin_customer, auth_headers):
+        """Test getting roles for non-existent customer (covers lines 150-151)."""
+        headers = auth_headers(admin_customer)
+        
+        import uuid
+        non_existent_id = str(uuid.uuid4())
+        response = admin_client.get(f"/v1/admin/customers/{non_existent_id}/roles/", headers=headers)
+        assert response.status_code == 404
+
+    def test_assign_role_to_nonexistent_customer(self, admin_client, admin_customer, auth_headers):
+        """Test assigning role to non-existent customer (covers lines 172-173)."""
+        headers = auth_headers(admin_customer)
+        
+        import uuid
+        non_existent_id = str(uuid.uuid4())
+        response = admin_client.post(
+            f"/v1/admin/customers/{non_existent_id}/roles/",
+            json={"role_name": RoleName.CUSTOMER},
+            headers=headers,
+        )
+        assert response.status_code == 404
+
+    def test_remove_role_from_nonexistent_customer(self, admin_client, admin_customer, auth_headers):
+        """Test removing role from non-existent customer (covers lines 203-204)."""
+        headers = auth_headers(admin_customer)
+        
+        import uuid
+        non_existent_id = str(uuid.uuid4())
+        response = admin_client.delete(
+            f"/v1/admin/customers/{non_existent_id}/roles/{RoleName.CUSTOMER}/",
+            headers=headers,
+        )
+        assert response.status_code == 404
+
+    def test_admin_cannot_remove_own_admin_role(self, admin_client, admin_customer, auth_headers):
+        """Test admin cannot remove own admin role (covers line 208)."""
+        headers = auth_headers(admin_customer)
+        
+        response = admin_client.delete(
+            f"/v1/admin/customers/{admin_customer.id}/roles/{RoleName.ADMIN}/",
+            headers=headers,
+        )
+        assert response.status_code in [400, 403]
+        data = response.json()
+        assert "нельзя" in str(data).lower() or "cannot" in str(data).lower()
+
+    def test_remove_unassigned_role(self, admin_client, admin_customer, regular_customer, auth_headers):
+        """Test removing role that wasn't assigned (covers line 217)."""
+        headers = auth_headers(admin_customer)
+        
+        # Make sure customer doesn't have CATALOG_MANAGER role
+        response = admin_client.delete(
+            f"/v1/admin/customers/{regular_customer.id}/roles/{RoleName.CATALOG_MANAGER}/",
+            headers=headers,
+        )
+        assert response.status_code == 404
+
+    def test_get_permissions_nonexistent_customer(self, admin_client, admin_customer, auth_headers):
+        """Test getting permissions for non-existent customer (covers lines 235-236)."""
+        headers = auth_headers(admin_customer)
+        
+        import uuid
+        non_existent_id = str(uuid.uuid4())
+        response = admin_client.get(f"/v1/admin/customers/{non_existent_id}/permissions/", headers=headers)
+        assert response.status_code == 404
