@@ -8,7 +8,7 @@ COLOR_GREEN = \033[32m
 COLOR_YELLOW = \033[33m
 COLOR_BLUE = \033[34m
 
-.PHONY: help build up down logs restart clean shell migrate test
+.PHONY: help build up down logs restart clean shell migrate test test-cov
 
 help:
 	@echo "$(COLOR_GREEN)Dev-команды (Docker):$(COLOR_RESET)"
@@ -19,6 +19,8 @@ help:
 	@echo "$(COLOR_BLUE)  clean  $(COLOR_RESET) - Удалить контейнеры и образы"
 	@echo "$(COLOR_BLUE)  shell  $(COLOR_RESET) - Зайти в контейнер"
 	@echo "$(COLOR_BLUE)  migrate$(COLOR_RESET) - Выполнить миграции отдельным one-off контейнером"
+	@echo "$(COLOR_BLUE)  test   $(COLOR_RESET) - Запустить тесты (pytest)"
+	@echo "$(COLOR_BLUE)  test-cov$(COLOR_RESET) - Запустить тесты с замером покрытия (pytest-cov)"
 
 build:
 	@echo "$(COLOR_YELLOW)Сборка dev-образа...$(COLOR_RESET)"
@@ -48,3 +50,11 @@ shell:
 migrate:
 	$(DOCKER_COMPOSE) up -d db
 	$(DOCKER_COMPOSE) run --rm web python manage.py migrate
+
+test:
+	$(DOCKER_COMPOSE) up -d db
+	$(DOCKER_COMPOSE) run --rm web pytest
+
+test-cov:
+	$(DOCKER_COMPOSE) up -d db
+	$(DOCKER_COMPOSE) run --rm web pytest --cov=. --cov-report=term --cov-report=html
