@@ -1,7 +1,7 @@
 # MEMORY: Instrument Shop Backend
 
 ## Project Overview
-REST API backend for a musical instrument shop, built with Django and Django Ninja.
+REST API backend for a construction tool shop, built with Django and Django Ninja.
 
 ## Tech Stack
 - **Django 6.0.4** — Web framework

@@ -10,7 +10,7 @@ from apps.orders.controllers import router as orders_router
 api = NinjaAPI(
     title="Instrument Shop API",
     version="1.0.0",
-    description="REST API для интернет-магазина музыкальных инструментов",
+    description="REST API для интернет-магазина строительных инструментов",
 )
 
 # Public/customer endpoints

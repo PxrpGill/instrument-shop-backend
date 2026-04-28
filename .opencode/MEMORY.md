@@ -1,7 +1,7 @@
 # Instrument Shop Backend - Project Context
 
 ## Overview
-REST API backend for a musical instrument shop, built with Django and Django Ninja.
+REST API backend for a construction tool shop, built with Django and Django Ninja.
 
 ## Available Agents
 Агенты для сабагентов доступны в `.opencode/agents/`:

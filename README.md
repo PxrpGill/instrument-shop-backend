@@ -1,6 +1,6 @@
 # Instrument Shop Backend
 
-REST API backend for a musical instrument shop, built with Django and Django Ninja.
+REST API backend for a construction tool shop, built with Django and Django Ninja.
 
 ## Tech Stack
 
