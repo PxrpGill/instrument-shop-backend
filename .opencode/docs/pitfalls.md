@@ -105,7 +105,7 @@ def test_something(self, auth_headers):
 docker-compose exec web python -m pytest apps/products/tests/ --reuse-db
 ```
 
-## 8. Pydantic v2 Schema Serialization
+ ## 8. Pydantic v2 Schema Serialization
 **Problem**: Pydantic v2 does not auto-serialize `Decimal`, `datetime`, or enum fields to strings when using `from_attributes=True`.
 **Solution**: Use typed serializers with `Annotated`:
 ```python
@@ -151,3 +151,27 @@ def convert_related_managers(cls, data):
         return data_dict
     return data
 ```
+
+## 9. Localization - Model Translations Not Applied
+**Problem**: After changing `verbose_name` or `help_text` in models, the admin panel still shows English text.
+**Solution**: 
+- Create and apply migrations: `docker-compose exec web python manage.py makemigrations && python manage.py migrate`
+- Django tracks `verbose_name`/`help_text` changes in migrations (unlike purely runtime changes)
+- Verify in Django shell: `python manage.py shell -c "from app.models import Model; print(Model._meta.verbose_name)"`
+
+## 10. Localization - gettext Not Found in Docker
+**Problem**: Running `makemessages` or `compilemessages` fails with "Can't find msgfmt. Make sure you have GNU gettext tools".
+**Solution**: Install gettext in Dockerfile:
+```dockerfile
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gettext \
+    && rm -rf /var/lib/apt/lists/*
+```
+
+## 11. Localization - Admin Models Still Show English
+**Problem**: Admin panel displays model names in English despite setting `LANGUAGE_CODE = 'ru'`.
+**Solution**:
+- Ensure `django.middleware.locale.LocaleMiddleware` is in `MIDDLEWARE` (after SessionMiddleware)
+- Check that `USE_I18N = True` in settings
+- Restart the Django server after changing `LANGUAGE_CODE`
+- Verify the browser sends `Accept-Language: ru` header (or test with `curl -H "Accept-Language: ru"`)

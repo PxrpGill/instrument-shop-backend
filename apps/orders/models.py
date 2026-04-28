@@ -4,13 +4,13 @@ from apps.products.models import TimeStampedModel
 
 
 class OrderStatusChoices(models.TextChoices):
-    """Order status choices."""
+    """Статусы заказа."""
 
-    NEW = "new", "New"
-    PROCESSING = "processing", "Processing"
-    CONFIRMED = "confirmed", "Confirmed"
-    CANCELLED = "cancelled", "Cancelled"
-    COMPLETED = "completed", "Completed"
+    NEW = "new", "Новый"
+    PROCESSING = "processing", "В обработке"
+    CONFIRMED = "confirmed", "Подтвержден"
+    CANCELLED = "cancelled", "Отменен"
+    COMPLETED = "completed", "Выполнен"
 
 
 class Order(TimeStampedModel):
@@ -26,51 +26,51 @@ class Order(TimeStampedModel):
         "users.Customer",
         on_delete=models.PROTECT,
         related_name="orders",
-        help_text="Customer who placed this order",
+        help_text="Клиент, оформивший заказ",
     )
 
-    # Order status
+    # Статус заказа
     status = models.CharField(
         max_length=20,
         choices=OrderStatusChoices.choices,
         default=OrderStatusChoices.NEW,
-        help_text="Order status: new, processing, confirmed, cancelled, completed",
+        help_text="Статус заказа: новый, в обработке, подтвержден, отменен, выполнен",
     )
 
-    # Customer contact information
+    # Контактная информация
     contact_email = models.EmailField(
-        help_text="Contact email for this order (may differ from customer email)"
+        help_text="Контактный email для этого заказа (может отличаться от email клиента)"
     )
     contact_phone = models.CharField(
         max_length=20,
         blank=True,
-        help_text="Contact phone for this order",
+        help_text="Контактный телефон для этого заказа",
     )
     first_name = models.CharField(
         max_length=100,
         blank=True,
-        help_text="Recipient first name",
+        help_text="Имя получателя",
     )
     last_name = models.CharField(
         max_length=100,
         blank=True,
-        help_text="Recipient last name",
+        help_text="Фамилия получателя",
     )
     address = models.TextField(
         blank=True,
-        help_text="Delivery address",
+        help_text="Адрес доставки",
     )
 
-    # Optional notes
+    # Дополнительные примечания
     notes = models.TextField(
         blank=True,
-        help_text="Order notes or special instructions",
+        help_text="Примечания к заказу или особые инструкции",
     )
 
     class Meta:
         db_table = "orders"
-        verbose_name = "Order"
-        verbose_name_plural = "Orders"
+        verbose_name = "Заказ"
+        verbose_name_plural = "Заказы"
         ordering = ["-created_at"]
         indexes = [
             models.Index(fields=["customer"]),
@@ -119,27 +119,27 @@ class OrderItem(TimeStampedModel):
         help_text="Product ordered",
     )
 
-    # Snapshot of product name at time of order
+    # Снимок названия товара на момент заказа
     product_name = models.CharField(
         max_length=255,
-        help_text="Product name snapshot at time of order",
+        help_text="Название товара на момент заказа",
     )
 
-    # Quantity and price
+    # Количество и цена
     quantity = models.PositiveIntegerField(
         default=1,
-        help_text="Quantity ordered",
+        help_text="Количество товара",
     )
     unit_price = models.DecimalField(
         max_digits=10,
         decimal_places=2,
-        help_text="Unit price snapshot at time of order",
+        help_text="Цена за единицу на момент заказа",
     )
 
     class Meta:
         db_table = "order_items"
-        verbose_name = "Order Item"
-        verbose_name_plural = "Order Items"
+        verbose_name = "Позиция заказа"
+        verbose_name_plural = "Позиции заказа"
         ordering = ["created_at"]
         indexes = [
             models.Index(fields=["order"]),

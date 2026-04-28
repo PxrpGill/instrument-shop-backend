@@ -34,6 +34,18 @@ docker-compose exec web python manage.py migrate
 docker-compose exec web python manage.py createsuperuser
 ```
 
+## Translations (i18n)
+```bash
+# Generate translation files for Russian
+docker-compose exec web python manage.py makemessages -l ru
+
+# Compile translations
+docker-compose exec web python manage.py compilemessages
+
+# Check installed locales
+docker-compose exec web python -c "import locale; print(locale.locale_alias)"
+```
+
 ## Testing
 ```bash
 # Pytest (recommended)

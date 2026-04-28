@@ -21,8 +21,8 @@ class Category(TimeStampedModel):
     image = models.ImageField(upload_to="categories/", blank=True, null=True)
 
     class Meta:
-        verbose_name = "Category"
-        verbose_name_plural = "Categories"
+        verbose_name = "Категория"
+        verbose_name_plural = "Категории"
         ordering = ["name"]
 
     def __str__(self) -> str:
@@ -35,19 +35,19 @@ class Category(TimeStampedModel):
 
 
 class ProductStatusChoices(models.TextChoices):
-    """Product status choices."""
+    """Статусы товара."""
 
-    DRAFT = "draft", "Draft"
-    PUBLISHED = "published", "Published"
-    ARCHIVED = "archived", "Archived"
+    DRAFT = "draft", "Черновик"
+    PUBLISHED = "published", "Опубликован"
+    ARCHIVED = "archived", "Архивирован"
 
 
 class ProductAvailabilityChoices(models.TextChoices):
-    """Product availability choices."""
+    """Доступность товара."""
 
-    IN_STOCK = "in_stock", "In Stock"
-    OUT_OF_STOCK = "out_of_stock", "Out of Stock"
-    ON_REQUEST = "on_request", "On Request"
+    IN_STOCK = "in_stock", "В наличии"
+    OUT_OF_STOCK = "out_of_stock", "Нет в наличии"
+    ON_REQUEST = "on_request", "Под заказ"
 
 
 class Product(TimeStampedModel):
@@ -58,7 +58,7 @@ class Product(TimeStampedModel):
     parameters = models.JSONField(
         default=dict,
         blank=True,
-        help_text="Flexible parameters like size, color, volume, etc.",
+        help_text="Гибкие параметры: размер, цвет, объем и т.д.",
     )
     price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     categories = models.ManyToManyField(
@@ -71,30 +71,30 @@ class Product(TimeStampedModel):
         unique=True,
         blank=True,
         null=True,
-        help_text="Stock keeping unit ( SKU)",
+        help_text="Артикул (SKU)",
     )
     brand = models.CharField(
         max_length=255,
         blank=True,
         default="",
-        help_text="Product brand",
+        help_text="Бренд товара",
     )
     status = models.CharField(
         max_length=20,
         choices=ProductStatusChoices.choices,
         default=ProductStatusChoices.DRAFT,
-        help_text="Product status: draft, published, archived",
+        help_text="Статус товара: черновик, опубликован, архивирован",
     )
     availability = models.CharField(
         max_length=20,
         choices=ProductAvailabilityChoices.choices,
         default=ProductAvailabilityChoices.IN_STOCK,
-        help_text="Product availability: in_stock, out_of_stock, on_request",
+        help_text="Доступность товара: в наличии, нет в наличии, под заказ",
     )
 
     class Meta:
-        verbose_name = "Product"
-        verbose_name_plural = "Products"
+        verbose_name = "Товар"
+        verbose_name_plural = "Товары"
         ordering = ["-created_at"]
 
     def __str__(self) -> str:
@@ -111,15 +111,15 @@ class ProductImage(TimeStampedModel):
     )
     image = models.ImageField(upload_to="products/")
     alt_text = models.CharField(
-        max_length=255, blank=True, help_text="Alternative text for the image"
+        max_length=255, blank=True, help_text="Альтернативный текст для изображения"
     )
     is_primary = models.BooleanField(
-        default=False, help_text="Set as primary image for the product"
+        default=False, help_text="Установить как основное изображение товара"
     )
 
     class Meta:
-        verbose_name = "Product Image"
-        verbose_name_plural = "Product Images"
+        verbose_name = "Изображение товара"
+        verbose_name_plural = "Изображения товаров"
         ordering = ["-is_primary", "-created_at"]
         constraints = [
             models.UniqueConstraint(

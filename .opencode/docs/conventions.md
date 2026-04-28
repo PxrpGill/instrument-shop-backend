@@ -41,8 +41,10 @@ Status cannot be changed via PUT or POST /products/, only via dedicated publish 
 ### Models
 - `__str__` method
 - `Meta` for ordering/verbose names
+- **All models MUST have Russian `verbose_name` and `verbose_name_plural` in Meta**
+- **All fields MUST have Russian `help_text` (especially for choices, JSONField, ForeignKey)**
 - `related_name` for ForeignKeys
-- `choices` for limited values
+- `choices` for limited values (use `TextChoices` with Russian translations)
 - Model methods for model logic
 - Use `TimeStampedModel` abstract base for timestamps when needed
 
@@ -98,6 +100,14 @@ Status cannot be changed via PUT or POST /products/, only via dedicated publish 
 - Use pytest fixtures from conftest.py
 - Test API endpoints with TestClient
 - Test permissions and authentication thoroughly
+
+### Localization (i18n)
+- Django Admin panel is configured for Russian (`LANGUAGE_CODE = 'ru'`)
+- All user-facing strings in models (verbose_name, help_text) must be in Russian
+- Use `TextChoices` with Russian translations for model choices
+- Admin classes should have Russian `short_description` for custom methods
+- Admin fieldsets should use Russian section titles
+- gettext is available in Docker container for translation compilation
 
 ### Security
 - No hardcoded secrets

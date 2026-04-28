@@ -117,6 +117,32 @@
   - `apps/users/tests/test_role_controllers.py`
 - **Priority**: Medium (completed as part of quality improvement)
 
+### Task 13 (Admin Panel Russian Localization) ✅ **Completed**
+- **Objective**: Full Russian localization of Django Admin panel with Unfold
+- **Settings changes** (`instrument_shop/settings.py`):
+  - Added `LocaleMiddleware` for language detection
+  - Set `LANGUAGE_CODE = 'ru'` (changed from 'en-us')
+  - Configured `TIME_ZONE = 'Europe/Moscow'`
+  - Added `USE_L10N = True`, `LANGUAGES` list, `LOCALE_PATHS`
+  - Installed `gettext` in Docker container (updated `docker/dev/Dockerfile`)
+- **Model translations** (all apps):
+  - Updated `verbose_name` and `verbose_name_plural` for all models to Russian
+  - Translated `help_text` for all fields to Russian
+  - Translated `TextChoices` (statuses, availability) to Russian
+  - **apps/users**: Роль/Роли, Клиент/Клиенты, Роль клиента/Роли клиентов
+  - **apps/products**: Товар/Товары, Категория/Категории, Изображение товара/Изображения товаров
+  - **apps/orders**: Заказ/Заказы, Позиция заказа/Позиции заказа
+- **Admin panel configuration** (Unfold):
+  - **apps/users/admin.py**: Separate classes for Role, CustomerRole, Customer with list_display, filters, search_fields
+  - **apps/products/admin.py**: Separate classes for Category, Product, ProductImage with editable statuses
+  - **apps/orders/admin.py**: Order and OrderItem admin with fieldsets, custom display methods, currency formatting (₽)
+- **Migrations created and applied**:
+  - `users.0008_alter_customer_options_alter_customerrole_options_and_more`
+  - `orders.0002_alter_order_options_alter_orderitem_options_and_more`
+  - `products.0007_alter_category_options_alter_product_options_and_more`
+- **Verification**: `manage.py check` passes, all model verbose_names confirmed in Django shell
+- **Priority**: Medium (completed as part of UX improvement)
+
 ## Known Issues:
 - All tests now passing (**261 tests** total)
 - Code formatted with Black and isort

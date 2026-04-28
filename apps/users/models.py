@@ -13,7 +13,7 @@ class Role(models.Model):
     description = models.TextField(blank=True)
     permissions = models.JSONField(
         default=dict,
-        help_text="JSON object with permissions, e.g., {'create_product': true, 'edit_product': true}"
+        help_text="JSON объект с разрешениями, например: {'create_product': true, 'edit_product': true}"
     )
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -21,8 +21,8 @@ class Role(models.Model):
 
     class Meta:
         db_table = 'roles'
-        verbose_name = 'Role'
-        verbose_name_plural = 'Roles'
+        verbose_name = 'Роль'
+        verbose_name_plural = 'Роли'
         ordering = ['name']
         indexes = [
             models.Index(fields=['name']),
@@ -70,8 +70,8 @@ class CustomerRole(models.Model):
 
     class Meta:
         db_table = 'customer_roles'
-        verbose_name = 'Customer Role'
-        verbose_name_plural = 'Customer Roles'
+        verbose_name = 'Роль клиента'
+        verbose_name_plural = 'Роли клиентов'
         unique_together = ['customer', 'role']
         indexes = [
             models.Index(fields=['customer']),
@@ -116,8 +116,8 @@ class Customer(models.Model):
 
     class Meta:
         db_table = 'customers'
-        verbose_name = 'Customer'
-        verbose_name_plural = 'Customers'
+        verbose_name = 'Клиент'
+        verbose_name_plural = 'Клиенты'
         ordering = ['-created_at']
         indexes = [
             models.Index(fields=['email']),
