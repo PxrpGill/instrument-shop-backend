@@ -50,6 +50,7 @@ Thumbs.db
 .env
 .env.local
 docker/dev/.env
+docker/dev/cookies.txt
 docker/prod/.env
 
 # Testing
