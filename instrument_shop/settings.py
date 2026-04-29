@@ -81,7 +81,7 @@ ROOT_URLCONF = 'instrument_shop.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / "templates"],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -183,4 +183,13 @@ SIMPLE_JWT = {
     'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
     'USER_ID_FIELD': 'id',
     'USER_ID_CLAIM': 'user_id',
+}
+
+
+# Unfold Admin Configuration
+UNFOLD = {
+    "DASHBOARD_CALLBACK": "apps.core.dashboard.dashboard_callback",
+    "SITE_TITLE": "Instrument Shop - Администрирование",
+    "SITE_HEADER": "Instrument Shop",
+    "SITE_URL": "/",
 }

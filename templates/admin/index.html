@@ -1,0 +1,519 @@
+{% extends 'admin/base.html' %}
+{% load i18n %}
+
+{% block title %}Администрирование | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block branding %}
+    {% include "unfold/helpers/site_branding.html" %}
+{% endblock %}
+
+{% block content %}
+    <div class="flex flex-col gap-6 p-6">
+        <!-- Dashboard Header -->
+        <div class="flex items-center justify-between">
+            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
+                Панель управления
+            </h1>
+        </div>
+
+        <!-- KPI Cards Row -->
+        <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+            <!-- Total Orders -->
+            <div class="bg-white dark:bg-base-800 rounded-lg shadow p-4">
+                <div class="text-sm text-gray-500 dark:text-gray-400">Всего заказов</div>
+                <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ total_orders }}</div>
+            </div>
+            
+            <!-- New Orders (action required) -->
+            <div class="bg-white dark:bg-base-800 rounded-lg shadow p-4 border-l-4 border-yellow-500">
+                <div class="text-sm text-gray-500 dark:text-gray-400">Новые заказы</div>
+                <div class="text-2xl font-bold text-yellow-600">{{ new_orders }}</div>
+                {% if new_orders > 0 %}
+                    <div class="text-xs text-yellow-600 mt-1">Требуют обработки</div>
+                {% endif %}
+            </div>
+            
+            <!-- Total Revenue -->
+            <div class="bg-white dark:bg-base-800 rounded-lg shadow p-4">
+                <div class="text-sm text-gray-500 dark:text-gray-400">Общая выручка</div>
+                <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ total_revenue|floatformat:2 }} ₽</div>
+                <div class="text-xs text-gray-500 mt-1">Подтвержденные и выполненные</div>
+            </div>
+            
+            <!-- Total Customers -->
+            <div class="bg-white dark:bg-base-800 rounded-lg shadow p-4">
+                <div class="text-sm text-gray-500 dark:text-gray-400">Активные клиенты</div>
+                <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ total_customers }}</div>
+                <div class="text-xs text-gray-500 mt-1">+{{ new_customers_week }} за неделю</div>
+            </div>
+            
+            <!-- Published Products -->
+            <div class="bg-white dark:bg-base-800 rounded-lg shadow p-4">
+                <div class="text-sm text-gray-500 dark:text-gray-400">Товары в каталоге</div>
+                <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ published_products }}</div>
+                <div class="text-xs text-gray-500 mt-1">из {{ total_products }} всего</div>
+            </div>
+        </div>
+        
+        <!-- Charts Row: Sales Analytics -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Monthly Sales Line Chart -->
+            <div class="bg-white dark:bg-base-800 rounded-lg shadow p-4">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                    Динамика выручки по месяцам
+                </h3>
+                <div class="relative" style="height: 300px;">
+                    <canvas id="monthlySalesChart"></canvas>
+                </div>
+            </div>
+            
+            <!-- Sales by Category Bar Chart -->
+            <div class="bg-white dark:bg-base-800 rounded-lg shadow p-4">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                    Продажи по категориям
+                </h3>
+                <div class="relative" style="height: 300px;">
+                    <canvas id="categorySalesChart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Chart Row: Order Status Distribution -->
+        <div class="mt-6 bg-white dark:bg-base-800 rounded-lg shadow p-4">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                Распределение заказов по статусам
+            </h3>
+            <div class="relative w-1/2 mx-auto" style="height: 300px;">
+                <canvas id="statusChart"></canvas>
+            </div>
+        </div>
+        
+        <!-- Second Row: Actionable Lists -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Orders Awaiting Processing -->
+            <div class="bg-white dark:bg-base-800 rounded-lg shadow">
+                <div class="p-4 border-b dark:border-base-700">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                        Заказы к обработке
+                        {% if new_orders > 0 %}
+                            <span class="ml-2 px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">
+                                {{ new_orders }}
+                            </span>
+                        {% endif %}
+                    </h3>
+                </div>
+                <div class="p-4">
+                    {% if awaiting_orders %}
+                        <table class="w-full">
+                            <thead>
+                                <tr class="border-b dark:border-base-700">
+                                    <th class="text-left py-2 text-sm font-medium text-gray-600 dark:text-gray-400">№</th>
+                                    <th class="text-left py-2 text-sm font-medium text-gray-600 dark:text-gray-400">Клиент</th>
+                                    <th class="text-left py-2 text-sm font-medium text-gray-600 dark:text-gray-400">Дата</th>
+                                    <th class="text-right py-2 text-sm font-medium text-gray-600 dark:text-gray-400">Сумма</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for order in awaiting_orders %}
+                                    <tr class="border-b dark:border-base-700 hover:bg-gray-50 dark:hover:bg-base-700">
+                                        <td class="py-2">
+                                            <a href="/admin/orders/order/{{ order.pk }}/change/" 
+                                               class="text-blue-600 hover:text-blue-800 dark:text-blue-400">
+                                                #{{ order.pk }}
+                                            </a>
+                                        </td>
+                                        <td class="py-2 text-sm text-gray-900 dark:text-white">
+                                            {{ order.customer.email }}
+                                        </td>
+                                        <td class="py-2 text-sm text-gray-600 dark:text-gray-400">
+                                            {{ order.created_at|date:"d.m.Y H:i" }}
+                                        </td>
+                                        <td class="py-2 text-sm text-right text-gray-900 dark:text-white">
+                                            {{ order.total_amount|floatformat:2 }} ₽
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    {% else %}
+                        <p class="text-gray-500 dark:text-gray-400">Нет новых заказов</p>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Recent Orders -->
+            <div class="bg-white dark:bg-base-800 rounded-lg shadow">
+                <div class="p-4 border-b dark:border-base-700">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Последние заказы</h3>
+                </div>
+                <div class="p-4">
+                    {% if recent_orders %}
+                        <table class="w-full">
+                            <thead>
+                                <tr class="border-b dark:border-base-700">
+                                    <th class="text-left py-2 text-sm font-medium text-gray-600 dark:text-gray-400">№</th>
+                                    <th class="text-left py-2 text-sm font-medium text-gray-600 dark:text-gray-400">Клиент</th>
+                                    <th class="text-left py-2 text-sm font-medium text-gray-600 dark:text-gray-400">Статус</th>
+                                    <th class="text-right py-2 text-sm font-medium text-gray-600 dark:text-gray-400">Сумма</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for order in recent_orders %}
+                                    <tr class="border-b dark:border-base-700 hover:bg-gray-50 dark:hover:bg-base-700">
+                                        <td class="py-2">
+                                            <a href="/admin/orders/order/{{ order.pk }}/change/" 
+                                               class="text-blue-600 hover:text-blue-800 dark:text-blue-400">
+                                                #{{ order.pk }}
+                                            </a>
+                                        </td>
+                                        <td class="py-2 text-sm text-gray-900 dark:text-white">
+                                            {{ order.customer.email }}
+                                        </td>
+                                        <td class="py-2">
+                                            <span class="px-2 py-1 text-xs font-medium rounded-full 
+                                                {% if order.status == 'new' %}bg-yellow-100 text-yellow-800
+                                                {% elif order.status == 'processing' %}bg-blue-100 text-blue-800
+                                                {% elif order.status == 'confirmed' %}bg-green-100 text-green-800
+                                                {% elif order.status == 'completed' %}bg-gray-100 text-gray-800
+                                                {% elif order.status == 'cancelled' %}bg-red-100 text-red-800
+                                                {% endif %}">
+                                                {{ order.get_status_display }}
+                                            </span>
+                                        </td>
+                                        <td class="py-2 text-sm text-right text-gray-900 dark:text-white">
+                                            {{ order.total_amount|floatformat:2 }} ₽
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    {% else %}
+                        <p class="text-gray-500 dark:text-gray-400">Заказов пока нет</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Third Row: Status Breakdowns -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Order Status Breakdown -->
+            <div class="bg-white dark:bg-base-800 rounded-lg shadow p-4">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Статусы заказов</h3>
+                {% for status_item in orders_by_status %}
+                    <div class="flex justify-between py-2 border-b dark:border-base-700">
+                        <span class="text-gray-700 dark:text-gray-300">
+                            {% if status_item.status == 'new' %}Новый
+                            {% elif status_item.status == 'processing' %}В обработке
+                            {% elif status_item.status == 'confirmed' %}Подтвержден
+                            {% elif status_item.status == 'completed' %}Выполнен
+                            {% elif status_item.status == 'cancelled' %}Отменен
+                            {% else %}{{ status_item.status }}
+                            {% endif %}
+                        </span>
+                        <span class="font-bold text-gray-900 dark:text-white">{{ status_item.count }}</span>
+                    </div>
+                {% endfor %}
+            </div>
+            
+            <!-- Product Statistics -->
+            <div class="bg-white dark:bg-base-800 rounded-lg shadow p-4">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Статусы товаров</h3>
+                {% for status_item in products_by_status %}
+                    <div class="flex justify-between py-2 border-b dark:border-base-700">
+                        <span class="text-gray-700 dark:text-gray-300">
+                            {% if status_item.status == 'draft' %}Черновик
+                            {% elif status_item.status == 'published' %}Опубликован
+                            {% elif status_item.status == 'archived' %}Архивирован
+                            {% else %}{{ status_item.status }}
+                            {% endif %}
+                        </span>
+                        <span class="font-bold text-gray-900 dark:text-white">{{ status_item.count }}</span>
+                    </div>
+                {% endfor %}
+                
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 mt-6">Наличие товаров</h3>
+                {% for avail_item in products_by_availability %}
+                    <div class="flex justify-between py-2 border-b dark:border-base-700">
+                        <span class="text-gray-700 dark:text-gray-300">
+                            {% if avail_item.availability == 'in_stock' %}В наличии
+                            {% elif avail_item.availability == 'out_of_stock' %}Нет в наличии
+                            {% elif avail_item.availability == 'on_request' %}Под заказ
+                            {% else %}{{ avail_item.availability }}
+                            {% endif %}
+                        </span>
+                        <span class="font-bold text-gray-900 dark:text-white">{{ avail_item.count }}</span>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <!-- Fourth Row: Additional Metrics & Issues -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Recent Customers -->
+            <div class="bg-white dark:bg-base-800 rounded-lg shadow">
+                <div class="p-4 border-b dark:border-base-700">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Новые клиенты</h3>
+                </div>
+                <div class="p-4">
+                    {% if recent_customers %}
+                        <table class="w-full">
+                            <thead>
+                                <tr class="border-b dark:border-base-700">
+                                    <th class="text-left py-2 text-sm font-medium text-gray-600 dark:text-gray-400">Email</th>
+                                    <th class="text-left py-2 text-sm font-medium text-gray-600 dark:text-gray-400">Дата регистрации</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for customer in recent_customers %}
+                                    <tr class="border-b dark:border-base-700 hover:bg-gray-50 dark:hover:bg-base-700">
+                                        <td class="py-2">
+                                            <a href="/admin/users/customer/{{ customer.pk }}/change/" 
+                                               class="text-blue-600 hover:text-blue-800 dark:text-blue-400">
+                                                {{ customer.email }}
+                                            </a>
+                                        </td>
+                                        <td class="py-2 text-sm text-gray-600 dark:text-gray-400">
+                                            {{ customer.created_at|date:"d.m.Y H:i" }}
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    {% else %}
+                        <p class="text-gray-500 dark:text-gray-400">Нет зарегистрированных клиентов</p>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Potential Issues -->
+            <div class="bg-white dark:bg-base-800 rounded-lg shadow p-4">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Проблемы каталога</h3>
+                
+                <div class="space-y-3">
+                    <div class="flex justify-between py-2 border-b dark:border-base-700">
+                        <span class="text-gray-700 dark:text-gray-300">Товары без изображений</span>
+                        <span class="font-bold {% if products_without_images > 0 %}text-yellow-600{% else %}text-green-600{% endif %}">
+                            {{ products_without_images }}
+                        </span>
+                    </div>
+                    
+                    <div class="flex justify-between py-2 border-b dark:border-base-700">
+                        <span class="text-gray-700 dark:text-gray-300">Товары без категорий</span>
+                        <span class="font-bold {% if products_without_categories > 0 %}text-yellow-600{% else %}text-green-600{% endif %}">
+                            {{ products_without_categories }}
+                        </span>
+                    </div>
+                    
+                    <div class="mt-4 text-sm text-gray-600 dark:text-gray-400">
+                        <p>Всего товаров: {{ total_products }}</p>
+                        <p>Опубликовано: {{ published_products }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Fifth Row: Monthly Stats & App List -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Monthly Stats -->
+            <div class="bg-white dark:bg-base-800 rounded-lg shadow p-4">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Статистика за последние 30 дней</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="p-3 bg-gray-50 dark:bg-base-700 rounded">
+                        <div class="text-sm text-gray-500 dark:text-gray-400">Новые заказы</div>
+                        <div class="text-xl font-bold text-gray-900 dark:text-white">{{ orders_this_month }}</div>
+                    </div>
+                    <div class="p-3 bg-gray-50 dark:bg-base-700 rounded">
+                        <div class="text-sm text-gray-500 dark:text-gray-400">Выручка</div>
+                        <div class="text-xl font-bold text-gray-900 dark:text-white">{{ revenue_this_month|floatformat:2 }} ₽</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- App List (from Unfold) -->
+            <div class="bg-white dark:bg-base-800 rounded-lg shadow p-4">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Управление</h3>
+                {% include "unfold/helpers/app_list_default.html" %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Chart.js Scripts - Unfold includes Chart.js by default -->
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Check if Chart is available (Unfold includes it)
+        if (typeof Chart === 'undefined') {
+            console.error('Chart.js not loaded. Make sure Unfold theme is properly configured.');
+            return;
+        }
+        
+        // Common options for dark mode support
+        const isDarkMode = document.documentElement.classList.contains('dark');
+        const textColor = isDarkMode ? '#e5e7eb' : '#374151';
+        const gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+        
+        // ====================
+        // Monthly Sales Line Chart
+        // ====================
+        const monthlyCtx = document.getElementById('monthlySalesChart');
+        if (monthlyCtx) {
+            new Chart(monthlyCtx, {
+                type: 'line',
+                data: {
+                    labels: {{ monthly_sales_labels|safe }},
+                    datasets: [{
+                        label: 'Выручка (₽)',
+                        data: {{ monthly_sales_data|safe }},
+                        borderColor: 'rgb(59, 130, 246)',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.3,
+                        fill: true,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { 
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return 'Выручка: ' + context.parsed.y.toFixed(2) + ' ₽';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                color: textColor,
+                                callback: function(value) {
+                                    return value.toFixed(0) + ' ₽';
+                                }
+                            },
+                            grid: {
+                                color: gridColor
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                color: textColor
+                            },
+                            grid: {
+                                color: gridColor
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // ====================
+        // Category Sales Bar Chart
+        // ====================
+        const categoryCtx = document.getElementById('categorySalesChart');
+        if (categoryCtx) {
+            new Chart(categoryCtx, {
+                type: 'bar',
+                data: {
+                    labels: {{ category_labels|safe }},
+                    datasets: [{
+                        label: 'Выручка (₽)',
+                        data: {{ category_data|safe }},
+                        backgroundColor: 'rgba(59, 130, 246, 0.7)',
+                        borderColor: 'rgb(59, 130, 246)',
+                        borderWidth: 1,
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { 
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return 'Выручка: ' + context.parsed.y.toFixed(2) + ' ₽';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                color: textColor,
+                                callback: function(value) {
+                                    return value.toFixed(0) + ' ₽';
+                                }
+                            },
+                            grid: {
+                                color: gridColor
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                color: textColor,
+                                maxRotation: 45
+                            },
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // ====================
+        // Order Status Doughnut Chart
+        // ====================
+        const statusCtx = document.getElementById('statusChart');
+        if (statusCtx) {
+            new Chart(statusCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: {{ status_labels|safe }},
+                    datasets: [{
+                        data: {{ status_data|safe }},
+                        backgroundColor: {{ status_colors|safe }},
+                        borderWidth: 2,
+                        borderColor: isDarkMode ? '#1f2937' : '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { 
+                            position: 'bottom',
+                            labels: {
+                                color: textColor,
+                                padding: 15,
+                                usePointStyle: true
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((context.parsed / total) * 100).toFixed(1);
+                                    return context.label + ': ' + context.parsed + ' (' + percentage + '%)';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    });
+    </script>
+{% endblock %}
