@@ -1,5 +1,7 @@
 from typing import List
 
+from django.core.cache import cache
+from django.db import transaction
 from django.shortcuts import get_object_or_404
 from ninja import Router
 
@@ -18,6 +20,32 @@ from .schemas import (
     ProductUpdateSchema,
 )
 from .services import ProductPublicationError, ProductPublicationService
+
+# =============================================================================
+# Cache Invalidation Helpers
+# =============================================================================
+
+
+def invalidate_public_cache() -> None:
+    """Invalidate all public cache keys."""
+    try:
+        from django_redis import get_redis_connection
+
+        redis_client = get_redis_connection("default")
+        for key in redis_client.keys("instrument_shop:public:products:*"):
+            redis_client.delete(key)
+    except Exception:
+        # Fallback to known keys only on error
+        pass
+
+    # Always delete these keys explicitly
+    cache.delete("public:categories:list")
+
+
+def invalidate_product_detail_cache(product_id: int) -> None:
+    """Invalidate cache for a specific product."""
+    cache.delete(f"public:products:detail:{product_id}")
+
 
 # ============================================================================
 # Categories Router
@@ -43,6 +71,7 @@ def create_category(request, payload: CategoryCreateSchema):
     customer = get_customer_from_request(request)
     HasRoleMixin.require_permission(customer, Permission.CREATE_CATEGORY)
     category = Category.objects.create(**payload.dict())
+    invalidate_public_cache()
     return category
 
 
@@ -66,6 +95,7 @@ def update_category(request, category_id: int, payload: CategoryCreateSchema):
     for key, value in payload.dict().items():
         setattr(category, key, value)
     category.save()
+    invalidate_public_cache()
     return category
 
 
@@ -79,6 +109,7 @@ def delete_category(request, category_id: int):
     HasRoleMixin.require_permission(customer, Permission.DELETE_CATEGORY)
     category = get_object_or_404(Category, pk=category_id)
     category.delete()
+    invalidate_public_cache()
     return {"success": True}
 
 
@@ -123,6 +154,7 @@ def create_product(request, payload: ProductCreateSchema):
     if category_ids:
         categories = Category.objects.filter(pk__in=category_ids)
         product.categories.set(categories)
+    invalidate_public_cache()
     return product
 
 
@@ -148,6 +180,8 @@ def update_product(request, product_id: int, payload: ProductUpdateSchema):
     for key, value in payload.dict().items():
         setattr(product, key, value)
     product.save()
+    invalidate_product_detail_cache(product_id)
+    invalidate_public_cache()
     return product
 
 
@@ -166,6 +200,8 @@ def publish_product(request, product_id: int):
         raise ProductPublicationError(errors)
     product.status = ProductStatusChoices.PUBLISHED
     product.save()
+    invalidate_product_detail_cache(product_id)
+    invalidate_public_cache()
     return product
 
 
@@ -179,6 +215,8 @@ def delete_product(request, product_id: int):
     HasRoleMixin.require_permission(customer, Permission.DELETE_PRODUCT)
     product = get_object_or_404(Product, pk=product_id)
     product.delete()
+    invalidate_product_detail_cache(product_id)
+    invalidate_public_cache()
     return {"success": True}
 
 
@@ -207,6 +245,7 @@ def create_product_image(request, product_id: int, payload: ProductImageCreateSc
     HasRoleMixin.require_permission(customer, Permission.EDIT_PRODUCT)
     product = get_object_or_404(Product, pk=product_id)
     image = ProductImage.objects.create(product=product, **payload.dict())
+    invalidate_product_detail_cache(product_id)
     return image
 
 
@@ -227,6 +266,7 @@ def update_product_image(
     for key, value in payload.dict().items():
         setattr(image, key, value)
     image.save()
+    invalidate_product_detail_cache(product_id)
     return image
 
 
@@ -241,4 +281,5 @@ def delete_product_image(request, product_id: int, image_id: int):
     product = get_object_or_404(Product, pk=product_id)
     image = get_object_or_404(ProductImage, pk=image_id, product=product)
     image.delete()
+    invalidate_product_detail_cache(product_id)
     return {"success": True}

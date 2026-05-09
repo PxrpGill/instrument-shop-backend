@@ -14,6 +14,21 @@ services:
     networks:
       - instrument-shop-network
 
+  redis:
+    image: redis:7-alpine
+    container_name: instrument-shop-prod-redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data_prod:/data
+    networks:
+      - instrument-shop-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
   web:
     build:
       context: ../..
@@ -26,6 +41,8 @@ services:
       DJANGO_SETTINGS_MODULE: instrument_shop.settings
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     volumes:
       - static_data_prod:/app/staticfiles
@@ -53,6 +70,7 @@ volumes:
   pg_data_prod:
   static_data_prod:
   media_data_prod:
+  redis_data_prod:
 
 networks:
   instrument-shop-network:

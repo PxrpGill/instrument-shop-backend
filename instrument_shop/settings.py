@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'corsheaders',
     'ninja',
     'rest_framework',
     'apps.users',
@@ -67,6 +68,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.locale.LocaleMiddleware',  # For admin localization
     'django.middleware.common.CommonMiddleware',
@@ -193,3 +195,75 @@ UNFOLD = {
     "SITE_HEADER": "Instrument Shop",
     "SITE_URL": "/",
 }
+
+
+# =============================================================================
+# CORS Configuration
+# =============================================================================
+
+CORS_ALLOWED_ORIGINS = env_list(
+    "CORS_ALLOWED_ORIGINS",
+    default=["http://localhost:3000", "http://localhost:5173"]
+)
+
+CORS_ALLOW_METHODS = [
+    "GET",
+    "POST",
+    "PUT",
+    "PATCH",
+    "DELETE",
+    "OPTIONS",
+]
+
+CORS_ALLOW_HEADERS = [
+    "Authorization",
+    "Content-Type",
+    "X-Requested-With",
+]
+
+CORS_ALLOW_CREDENTIALS = True
+
+# Validate CORS configuration
+if CORS_ALLOW_CREDENTIALS and "*" in CORS_ALLOWED_ORIGINS:
+    raise ValueError(
+        "CORS_ALLOWED_ORIGINS cannot contain '*' when CORS_ALLOW_CREDENTIALS is True"
+    )
+
+
+# =============================================================================
+# Redis Cache Configuration
+# =============================================================================
+
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": os.environ.get("REDIS_URL", "redis://localhost:6379/1"),
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        },
+        "KEY_PREFIX": "instrument_shop",
+    }
+}
+
+
+# =============================================================================
+# Production Security Settings
+# =============================================================================
+
+if not DEBUG:
+    # Require secure SECRET_KEY in production
+    if os.environ.get("SECRET_KEY", "").startswith("django-insecure"):
+        raise ValueError(
+            "SECRET_KEY must be set to a secure value in production. "
+            "Do not use default 'django-insecure-*' keys."
+        )
+    # HTTPS
+    SECURE_SSL_REDIRECT = True
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    # Cookies
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    # Headers
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    X_FRAME_OPTIONS = "SAMEORIGIN"

@@ -13,7 +13,7 @@ COLOR_BLUE = \033[34m
 help:
 	@echo "$(COLOR_GREEN)Dev-команды (Docker):$(COLOR_RESET)"
 	@echo "$(COLOR_BLUE)  build  $(COLOR_RESET) - Собрать образ"
-	@echo "$(COLOR_BLUE)  up     $(COLOR_RESET) - Запустить контейнеры"
+	@echo "$(COLOR_BLUE)  up     $(COLOR_RESET) - Запустить контейнеры (DB + Redis + Web)"
 	@echo "$(COLOR_BLUE)  down   $(COLOR_RESET) - Остановить контейнеры"
 	@echo "$(COLOR_BLUE)  logs   $(COLOR_RESET) - Показать логи"
 	@echo "$(COLOR_BLUE)  clean  $(COLOR_RESET) - Удалить контейнеры и образы"
@@ -32,6 +32,7 @@ up:
 	$(DOCKER_COMPOSE) up -d --build
 	@echo "$(COLOR_GREEN)Dev запущен!$(COLOR_RESET)"
 	@echo "$(COLOR_BLUE)http://localhost:8000/api/$(COLOR_RESET)"
+	@echo "$(COLOR_BLUE)Redis доступен на localhost:6379$(COLOR_RESET)"
 
 down:
 	$(DOCKER_COMPOSE) down
@@ -48,13 +49,13 @@ shell:
 	$(DOCKER_COMPOSE) exec web bash
 
 migrate:
-	$(DOCKER_COMPOSE) up -d db
+	$(DOCKER_COMPOSE) up -d db redis
 	$(DOCKER_COMPOSE) run --rm web python manage.py migrate
 
 test:
-	$(DOCKER_COMPOSE) up -d db
+	$(DOCKER_COMPOSE) up -d db redis
 	$(DOCKER_COMPOSE) run --rm web pytest
 
 test-cov:
-	$(DOCKER_COMPOSE) up -d db
+	$(DOCKER_COMPOSE) up -d db redis
 	$(DOCKER_COMPOSE) run --rm web pytest --cov=. --cov-report=term --cov-report=html

@@ -79,18 +79,33 @@ docker-compose exec web python manage.py show_urls
 docker-compose exec web python manage.py showmigrations
 ```
 
+## Redis Cache
+```bash
+# Redis runs as a service in docker-compose
+# Cache is configured in settings.py with KEY_PREFIX="instrument_shop"
+# To clear cache manually:
+docker-compose exec web python -c "from django.core.cache import cache; cache.clear()"
+```
+
 ## Project Structure
 ```
 instrument-shop-backend/
 ├── apps/                    # Django apps
 │   ├── users/              # User management
 │   ├── products/           # Product catalog
-│   └── orders/             # Order management
-├── core/                   # Core utilities
+│   ├── orders/             # Order management
+│   └── core/               # Core utilities (dashboard, etc.)
 ├── instrument_shop/        # Settings and URLs
-├── docker/                 # Docker config
+├── docker/                 # Docker config (dev + prod)
 ├── backlog/                # Backlog items
 ├── requirements.txt        # Dependencies
 ├── manage.py               # Django CLI
 └── conftest.py             # Pytest config
 ```
+
+## Security Features
+- **Rate Limiting**: 5/m login, 10/m register, 100/m public GET
+- **CORS**: Configured for localhost:3000, localhost:5173
+- **Security Headers**: X-Content-Type-Options, CSP, X-Frame-Options (nginx)
+- **Production**: SSL redirect, HSTS, secure cookies
+- **Caching**: Redis with 1-5 minute TTL, automatic invalidation

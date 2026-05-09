@@ -2,6 +2,7 @@ from ninja import Router
 from ninja.errors import HttpError
 from django.http import HttpRequest
 from django.db import transaction
+from django_ratelimit.decorators import ratelimit
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 
@@ -58,6 +59,7 @@ def get_customer_from_request(request: HttpRequest) -> Customer:
 
 
 @router.post("/register", response=TokenResponse, summary="Регистрация нового клиента")
+@ratelimit(key="ip", rate="10/m", method="POST", block=True)
 @transaction.atomic
 def register(request: HttpRequest, data: CustomerRegisterRequest) -> TokenResponse:
     """
@@ -89,6 +91,7 @@ def register(request: HttpRequest, data: CustomerRegisterRequest) -> TokenRespon
 
 
 @router.post("/login", response=TokenResponse, summary="Вход клиента")
+@ratelimit(key="ip", rate="5/m", method="POST", block=True)
 def login(request: HttpRequest, data: CustomerLoginRequest) -> TokenResponse:
     """
     Вход клиента по email и паролю.
@@ -109,6 +112,7 @@ def login(request: HttpRequest, data: CustomerLoginRequest) -> TokenResponse:
 
 
 @router.post("/refresh", response=TokenResponse, summary="Обновление токена")
+@ratelimit(key="ip", rate="20/m", method="POST", block=True)
 def refresh_token(request: HttpRequest, data: TokenRefreshRequest) -> TokenResponse:
     """
     Обновление access токена с помощью refresh токена.
