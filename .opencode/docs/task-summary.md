@@ -2,6 +2,22 @@
 
 ## Completed Tasks:
 
+### Task: Skill-Creator Meta-Skill ✅ **Completed**
+- **Objective**: Создать мета-скилл для стандартизированного создания скиллов и агентов
+- **Создано**:
+  - Директория: `.opencode/skills/skill-creator/`
+  - Файл: `.opencode/skills/skill-creator/SKILL.md` (370 строк)
+- **Возможности skill-creator**:
+  - Шаблоны для создания **Skills** (`.opencode/skills/<name>/SKILL.md`)
+  - Шаблоны для создания **Agents** (`.opencode/agents/<name>.md`)
+  - Сравнительная таблица различий между форматами
+  - Языковые конвенции (RU/EN смешение)
+  - Adaptive questions для сбора требований
+  - Валидационные чеклисты для обоих форматов
+- **Триггеры**: `skill`, `скилл`, `agent`, `агент`, `create skill`, `новый скилл` (только явный вызов)
+
+---
+
 ### Task 15 (Backend Security Hardening) ✅ **Completed**
 - **BE-036**: Redis infrastructure added (dev + prod docker-compose)
 - **BE-037**: Django Redis cache configured with KEY_PREFIX
