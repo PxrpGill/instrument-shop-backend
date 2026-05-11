@@ -1,11 +1,12 @@
 from ninja import NinjaAPI
 
+from apps.orders.controllers import router as orders_router
+from apps.pages.controllers import router as pages_router
 from apps.products.controllers import categories_router, images_router
 from apps.products.controllers import router as products_router
 from apps.products.public_api import public_router
 from apps.users.api.controllers import router as customers_router
 from apps.users.api.role_controllers import router as admin_router
-from apps.orders.controllers import router as orders_router
 
 api = NinjaAPI(
     title="Instrument Shop API",
@@ -29,6 +30,9 @@ api.add_router("/v1/orders/", orders_router)
 
 # Public storefront endpoints (no auth required)
 api.add_router("/v1/public/", public_router)
+
+# Pages (public content)
+api.add_router("/v1/public/", pages_router)
 
 
 @api.get("/hello")

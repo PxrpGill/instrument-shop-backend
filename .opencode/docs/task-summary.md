@@ -218,8 +218,40 @@
 - **Tests**: All 325 tests pass (1 pre-existing failure in `test_order_status_choices` unrelated to changes)
 - **Priority**: Medium (completed as UX improvement for administrators)
 
+### Task: Pages Module (Content Blocks + Page Builder) ✅ **Completed**
+- **Objective**: Создать раздел админки для управления информационными страницами сайта
+- **Архитектура**: Подход А — единая модель `ContentBlock` с `JSONField` для гибкого контента
+- **Модели**:
+  - `ContentBlock` — блок с типом (10 типов: hero, text, faq, features, gallery, reviews, banner, video, statistics, contacts), JSON-данными и статусом (draft/published)
+  - `Page` — страница с SEO-метаданными (meta_title, meta_description, og_image), уникальным slug
+  - `PageBlock` — through-модель с полем `order` для сортировки (M2M Page ↔ ContentBlock)
+- **Особенности**:
+  - Блоки переиспользуются на разных страницах (M2M)
+  - Статус публикации на уровне блока, не страницы
+  - Сортировка блоков на странице через поле order
+- **Админка (Unfold)**:
+  - `PageAdmin` — список страниц + TabularInline для блоков с сортировкой
+  - `ContentBlockAdmin` — фильтры по типу/статусу, list_editable статус
+- **API**:
+  - `GET /api/v1/public/pages/{slug}/` — публичный эндпоинт, отдаёт страницу только с опубликованными блоками в правильном порядке
+- **Файлы созданы**:
+  - `apps/pages/__init__.py`, `apps/pages/apps.py`
+  - `apps/pages/models.py` — 3 модели + BlockTypeChoices (10 типов), BlockStatusChoices
+  - `apps/pages/admin.py` — админка Unfold с inline
+  - `apps/pages/schemas.py` — Pydantic схемы (PageOut, ContentBlockOut)
+  - `apps/pages/services.py` — бизнес-логика
+  - `apps/pages/controllers.py` — API эндпоинт
+  - `apps/pages/tests/test_models.py` — 22 теста
+  - `apps/pages/tests/test_api.py` — 15 тестов
+  - `apps/pages/migrations/0001_initial.py` — миграция
+- **Файлы изменены**:
+  - `instrument_shop/settings.py` — добавлен `apps.pages` в INSTALLED_APPS
+  - `instrument_shop/api.py` — добавлен роутер pages
+  - `docker/dev/Makefile` — добавлена команда `createsuperuser`
+- **Всего тестов**: 378 (374 pass + 4 pre-existing failures, 37 новых для pages)
+
 ## Known Issues:
-- All core tests passing (**263 tests** passing in main suite)
+- All core tests passing (**374 tests** passing in main suite)
 - **Pre-existing failures** (not related to recent changes):
   - `test_order_status_choices` - expects English labels but model uses Russian (localization)
   - `test_public_api.py` - 2 tests fail due to test isolation issues with fixture reuse

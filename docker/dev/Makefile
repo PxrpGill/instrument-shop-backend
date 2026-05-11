@@ -8,7 +8,7 @@ COLOR_GREEN = \033[32m
 COLOR_YELLOW = \033[33m
 COLOR_BLUE = \033[34m
 
-.PHONY: help build up down logs restart clean shell migrate test test-cov
+.PHONY: help build up down logs restart clean shell migrate test test-cov createsuperuser
 
 help:
 	@echo "$(COLOR_GREEN)Dev-команды (Docker):$(COLOR_RESET)"
@@ -17,6 +17,7 @@ help:
 	@echo "$(COLOR_BLUE)  down   $(COLOR_RESET) - Остановить контейнеры"
 	@echo "$(COLOR_BLUE)  logs   $(COLOR_RESET) - Показать логи"
 	@echo "$(COLOR_BLUE)  clean  $(COLOR_RESET) - Удалить контейнеры и образы"
+	@echo "$(COLOR_BLUE)  createsuperuser$(COLOR_RESET) - Создать суперпользователя в админке"
 	@echo "$(COLOR_BLUE)  shell  $(COLOR_RESET) - Зайти в контейнер"
 	@echo "$(COLOR_BLUE)  migrate$(COLOR_RESET) - Выполнить миграции отдельным one-off контейнером"
 	@echo "$(COLOR_BLUE)  test   $(COLOR_RESET) - Запустить тесты (pytest)"
@@ -44,6 +45,12 @@ restart: down up
 
 clean:
 	$(DOCKER_COMPOSE) down -v --rmi all --remove-orphans
+
+createsuperuser:
+	@echo "$(COLOR_YELLOW)Создание суперпользователя...$(COLOR_RESET)"
+	$(DOCKER_COMPOSE) up -d db redis
+	$(DOCKER_COMPOSE) exec web python manage.py createsuperuser
+	@echo "$(COLOR_GREEN)Готово!$(COLOR_RESET)"
 
 shell:
 	$(DOCKER_COMPOSE) exec web bash
