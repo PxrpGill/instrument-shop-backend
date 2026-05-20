@@ -1,0 +1,52 @@
+{
+  "endpoint": "POST /api/auth/register",
+  "auth": false,
+  "description": "Регистрация пользователя. После успеха сразу логиним и возвращаем токены — фронт закрывает форму.",
+  "request": {
+    "body": {
+      "username": "Иван",
+      "email": "ivan@example.com",
+      "password": "Qwerty123",
+      "password_confirmation": "Qwerty123"
+    }
+  },
+  "responses": {
+    "201": {
+      "example": {
+        "access_token": "eyJhbGciOi...",
+        "refresh_token": "eyJhbGciOi...",
+        "token_type": "Bearer",
+        "expires_in": 3600,
+        "user": {
+          "id": "550e8400-e29b-41d4-a716-446655440000",
+          "username": "Иван",
+          "email": "ivan@example.com",
+          "created_at": "2026-05-20T10:15:00Z"
+        }
+      }
+    },
+    "409": {
+      "example": { "error": { "code": "EMAIL_ALREADY_TAKEN", "message": "Пользователь с таким email уже зарегистрирован" } }
+    },
+    "422": {
+      "example": {
+        "error": {
+          "code": "VALIDATION_ERROR",
+          "message": "Проверьте корректность заполнения формы",
+          "fields": {
+            "password_confirmation": ["Пароли не совпадают"],
+            "password": ["Пароль должен содержать минимум 8 символов и хотя бы одну цифру"]
+          }
+        }
+      }
+    }
+  },
+  "notes": {
+    "body.username": "2..64 символа",
+    "body.email": "Также используется как логин",
+    "body.password": "Минимум 8 символов, хотя бы одна цифра и одна буква (валидация на бекенде)",
+    "body.password_confirmation": "Должен совпадать с password",
+    "expires_in": "Время жизни access_token в секундах",
+    "user": "Формат идентичен auth/me"
+  }
+}

@@ -1,0 +1,62 @@
+{
+  "endpoint": "GET /api/catalog",
+  "auth": false,
+  "description": "Главная страница каталога /catalog. Возвращает плитки категорий, конфиг фильтров (цена + категории) и пагинированный список товаров.",
+  "request": {
+    "query": {
+      "page": 1,
+      "per_page": 24,
+      "price_min": 1000,
+      "price_max": 50000,
+      "categories": ["drills-and-screwdrivers", "grinders-and-saws"],
+      "sort": "popular"
+    },
+    "path": {},
+    "body": null
+  },
+  "responses": {
+    "200": {
+      "example": {
+        "categories_block": {
+          "title": "Категории инструментов",
+          "categories": [
+            { "title": "Дрели и шуруповёрты", "slug": "drills-and-screwdrivers" },
+            { "title": "Болгарки и пилы", "slug": "grinders-and-saws" }
+          ]
+        },
+        "filter_block": {
+          "price_filter": { "start_range": 1000, "end_range": 90000 },
+          "categories_filter": {
+            "categories": [
+              { "title": "Дрели и шуруповёрты", "slug": "drills-and-screwdrivers" },
+              { "title": "Болгарки и пилы", "slug": "grinders-and-saws" }
+            ]
+          }
+        },
+        "products_block": {
+          "title": "Товары",
+          "products": [
+            {
+              "id": 1,
+              "title": "Дрель ударная Metabo SBE 650",
+              "description": "Мощность 650 Вт, патрон 1.5–13 мм",
+              "sku": "MT-SBE-650",
+              "price": 5490,
+              "category": [{ "title": "Электроинструмент", "slug": "electricity-instrument" }]
+            }
+          ],
+          "meta": { "page": 1, "per_page": 24, "total_pages": 5, "total_items": 120 }
+        }
+      }
+    }
+  },
+  "notes": {
+    "query.categories": "Передаётся как ?categories=slug-1&categories=slug-2 (повторяющийся ключ)",
+    "query.sort": "Допустимо: 'popular' | 'price_asc' | 'price_desc' | 'new'. По умолчанию 'popular'.",
+    "query.price_min/max": "Опциональны. Если не переданы — фильтр по цене не применяется.",
+    "categories_block": "Плитки разделов сверху страницы (визуальная навигация)",
+    "filter_block.price_filter": "Границы доступного диапазона цен (для слайдера). Считаются по всем товарам без учёта текущих фильтров.",
+    "filter_block.categories_filter.categories": "Чекбоксы фильтров категорий",
+    "products_block.products[]": "Карточки товаров — shared/product (listing-формат)"
+  }
+}

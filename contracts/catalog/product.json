@@ -1,0 +1,74 @@
+{
+  "endpoint": "GET /api/catalog/products/{id}",
+  "auth": false,
+  "description": "Страница одного товара /catalog/{category-slug}/{product-id}. Возвращает полный объект Product (с галереей, descriptionParameters и techicalSpecifications) и блок витрины 'Рекомендуем'.",
+  "request": {
+    "query": {},
+    "path": { "id": 1 },
+    "body": null
+  },
+  "responses": {
+    "200": {
+      "example": {
+        "product": {
+          "id": 1,
+          "title": "Дрель ударная Metabo SBE 650",
+          "description": "Мощность 650 Вт, патрон 1.5–13 мм, регулировка оборотов, реверс",
+          "sku": "MT-SBE-650",
+          "price": 5490,
+          "status": { "title": "В наличии", "slugStatus": "inStock" },
+          "category": [
+            { "title": "Электроинструмент", "slug": "electro-instrument" },
+            { "title": "Ручной инструмент", "slug": "ruchnoi-instrument" }
+          ],
+          "gallery": [
+            { "webp": { "src": "https://cdn.example.com/products/metabo-1.webp" } },
+            { "webp": { "src": "https://cdn.example.com/products/metabo-2.webp" } }
+          ],
+          "descriptionParameters": [
+            {
+              "title": "Общие характеристики",
+              "parameters": "<p>Тип: дрель ударная</p><p>Питание: сеть 220 В</p>"
+            }
+          ],
+          "techicalSpecifications": [
+            {
+              "title": "Электрические параметры",
+              "specifications": [
+                { "label": "Напряжение питания", "value": "220 В" },
+                { "label": "Потребляемая мощность", "value": "650 Вт" }
+              ]
+            }
+          ]
+        },
+        "showcase": {
+          "title": "Рекомендуем",
+          "button": { "title": "В каталог", "href": "/catalog" },
+          "showcases": [
+            {
+              "title": "Электроинструмент",
+              "products": [
+                {
+                  "id": 2,
+                  "title": "Перфоратор Bosch GBH 2-26 DFR",
+                  "description": "Энергия удара 2.7 Дж...",
+                  "sku": "BS-GBH-226",
+                  "price": 8990,
+                  "category": [{ "title": "Электроинструмент", "slug": "electricity-instrument" }]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "404": {
+      "example": { "error": { "code": "NOT_FOUND", "message": "Товар не найден" } }
+    }
+  },
+  "notes": {
+    "product": "Полный формат shared/product (detail), со всеми опциональными полями",
+    "showcase": "Блок 'Рекомендуем' — товары, похожие на текущий (по категории, тегам и т.п.). Формат идентичен showcase из home.",
+    "showcase.showcases[].products[]": "Карточки в listing-формате"
+  }
+}

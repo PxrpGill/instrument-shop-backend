@@ -5,7 +5,8 @@ from apps.pages.controllers import router as pages_router
 from apps.products.controllers import categories_router, images_router
 from apps.products.controllers import router as products_router
 from apps.products.public_api import public_router
-from apps.users.api.controllers import router as customers_router
+from apps.shared.exception_handlers import register_error_handlers
+from apps.users.api.auth_controllers import router as auth_router
 from apps.users.api.role_controllers import router as admin_router
 
 api = NinjaAPI(
@@ -14,8 +15,10 @@ api = NinjaAPI(
     description="REST API для интернет-магазина строительных инструментов",
 )
 
-# Public/customer endpoints
-api.add_router("/v1/customers/", customers_router)
+register_error_handlers(api)
+
+# Аутентификация по контракту contracts/auth/* (UUID id, JWT + refresh)
+api.add_router("/auth/", auth_router)
 
 # Admin-only role management endpoints
 api.add_router("/v1/admin/", admin_router)

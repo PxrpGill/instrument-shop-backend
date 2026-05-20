@@ -5,7 +5,7 @@ from django.db import transaction
 from django.shortcuts import get_object_or_404
 from ninja import Router
 
-from apps.users.api.controllers import get_customer_from_request
+from apps.users.api.auth_helpers import get_customer_from_request
 from apps.users.constants import Permission
 from core.auth.permissions import HasPermission, HasRoleMixin, IsAuthenticated
 

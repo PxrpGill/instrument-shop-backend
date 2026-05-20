@@ -1,0 +1,27 @@
+{
+  "endpoint": "POST /api/auth/refresh",
+  "auth": false,
+  "description": "Обновить access_token по refresh_token. Refresh-токен ротируется: старый инвалидируется, в ответе приходит новый.",
+  "request": {
+    "body": {
+      "refresh_token": "eyJhbGciOi..."
+    }
+  },
+  "responses": {
+    "200": {
+      "example": {
+        "access_token": "eyJhbGciOi...",
+        "refresh_token": "eyJhbGciOi...",
+        "token_type": "Bearer",
+        "expires_in": 3600
+      }
+    },
+    "401": {
+      "example": { "error": { "code": "INVALID_TOKEN", "message": "Refresh-токен недействителен или истёк" } }
+    }
+  },
+  "notes": {
+    "expires_in": "Секунды",
+    "refresh_token (response)": "Новый refresh-токен, заменяет старый на стороне фронта"
+  }
+}

@@ -1,0 +1,63 @@
+{
+  "$id": "shared/product",
+  "description": "Карточка товара. На листингах (каталог, витрина, избранное) приходит без gallery / descriptionParameters / techicalSpecifications. На странице товара — со всеми полями.",
+  "example_list": {
+    "id": 1,
+    "title": "Дрель ударная Metabo SBE 650",
+    "description": "Мощность 650 Вт, патрон 1.5–13 мм, регулировка оборотов, реверс",
+    "sku": "MT-SBE-650",
+    "price": 5490,
+    "category": [
+      { "title": "Электроинструмент", "slug": "electricity-instrument" }
+    ],
+    "status": { "slugStatus": "inStock", "title": "В наличии" },
+    "poster": { "webp": { "src": "https://cdn.example.com/products/metabo.webp" } }
+  },
+  "example_detail": {
+    "id": 1,
+    "title": "Дрель ударная Metabo SBE 650",
+    "description": "Мощность 650 Вт, патрон 1.5–13 мм, регулировка оборотов, реверс",
+    "sku": "MT-SBE-650",
+    "price": 5490,
+    "status": { "slugStatus": "inStock", "title": "В наличии" },
+    "category": [
+      { "title": "Электроинструмент", "slug": "electro-instrument" },
+      { "title": "Ручной инструмент", "slug": "ruchnoi-instrument" }
+    ],
+    "gallery": [
+      { "webp": { "src": "https://cdn.example.com/products/metabo-1.webp" } },
+      { "webp": { "src": "https://cdn.example.com/products/metabo-2.webp" } }
+    ],
+    "descriptionParameters": [
+      {
+        "title": "Общие характеристики",
+        "parameters": "<p>Тип: дрель ударная</p><p>Питание: сеть 220 В</p><p>Мощность: 650 Вт</p>"
+      },
+      {
+        "title": "Комплектация",
+        "parameters": "<ul><li>Дрель</li><li>Доп. рукоятка</li><li>Кейс</li></ul>"
+      }
+    ],
+    "techicalSpecifications": [
+      {
+        "title": "Электрические параметры",
+        "specifications": [
+          { "label": "Напряжение питания", "value": "220 В" },
+          { "label": "Потребляемая мощность", "value": "650 Вт" }
+        ]
+      }
+    ]
+  },
+  "notes": {
+    "id": "Обязательно, целое",
+    "title": "Обязательно",
+    "category": "Обязательно, минимум один элемент",
+    "price": "Целое (рубли)",
+    "status.slugStatus": "Только 'inStock' | 'outOfStock' — используется для CSS-класса",
+    "status.title": "Текст рядом со статусом, например 'В наличии'",
+    "poster": "Опционально. Если нет — фронт показывает fallback-картинку",
+    "gallery": "Только в карточке товара (детальный ответ)",
+    "descriptionParameters[].parameters": "HTML-строка (p / ul / ol)",
+    "techicalSpecifications": "Внимание: на фронте поле названо 'techicalSpecifications' (опечатка), менять нельзя — типизация фронта зависит от этого имени"
+  }
+}

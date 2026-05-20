@@ -1,0 +1,22 @@
+{
+  "endpoint": "GET /api/pages/about-us",
+  "auth": false,
+  "description": "Страница «О компании». Управляется из админки. Оба поля опциональны.",
+  "request": { "query": {}, "path": {}, "body": null },
+  "responses": {
+    "200": {
+      "example": {
+        "banner": {
+          "title": "О&nbsp;компании",
+          "description": "Профессиональный инструмент для строителей, мастеров и&nbsp;тех, кто делает всё на совесть",
+          "poster": { "original": { "src": "https://cdn.example.com/about/yellow-vector.png" } }
+        },
+        "content": "<h2>История компании</h2><p>Компания <strong>ИнструментПро</strong> основана в 2008 году...</p><h2>Миссия и ценности</h2><p>...</p>"
+      }
+    }
+  },
+  "notes": {
+    "banner": "Большой баннер сверху (формат как news_cta из home), без поля button",
+    "content": "HTML-контент страницы (h2, h3, p, ul, ol, blockquote, strong, em). Рендерится через MarkupContent с dangerouslySetInnerHTML — бекенд обязан санитайзить через bleach."
+  }
+}

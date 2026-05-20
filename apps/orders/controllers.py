@@ -17,7 +17,7 @@ from apps.orders.schemas import (
     OrderStatusUpdateSchema,
 )
 from apps.orders.services import OrderCreationError, OrderService
-from apps.users.api.controllers import get_customer_from_request
+from apps.users.api.auth_helpers import get_customer_from_request
 from apps.users.constants import Permission, RoleName
 from core.auth.permissions import HasPermission, HasRoleMixin
 

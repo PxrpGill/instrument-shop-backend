@@ -1,0 +1,21 @@
+{
+  "endpoint": "POST /api/auth/logout",
+  "auth": true,
+  "description": "Выход. Инвалидирует переданный refresh_token (и access_token — опционально через blacklist).",
+  "request": {
+    "body": {
+      "refresh_token": "eyJhbGciOi..."
+    }
+  },
+  "responses": {
+    "204": {
+      "description": "Успешный выход. Тело ответа пустое."
+    },
+    "401": {
+      "example": { "error": { "code": "UNAUTHORIZED", "message": "Требуется авторизация" } }
+    }
+  },
+  "notes": {
+    "body.refresh_token": "Опционально. Если передан — отзывается этот конкретный refresh-токен; если нет — все активные сессии пользователя."
+  }
+}

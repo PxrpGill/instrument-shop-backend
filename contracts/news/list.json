@@ -1,0 +1,46 @@
+{
+  "endpoint": "GET /api/news",
+  "auth": false,
+  "description": "Список новостей с фильтрацией по табу и пагинацией. Slug 'all' возвращает все новости без фильтра.",
+  "request": {
+    "query": {
+      "tab": "all",
+      "page": 1,
+      "per_page": 12
+    },
+    "path": {},
+    "body": null
+  },
+  "responses": {
+    "200": {
+      "example": {
+        "title": "Новости магазина",
+        "description": "Будьте в курсе последних событий, акций и новинок...",
+        "tabs": [
+          { "title": "Все новости", "slug": "all" },
+          { "title": "Акции", "slug": "sales" },
+          { "title": "Новинки", "slug": "new" },
+          { "title": "Советы", "slug": "tips" }
+        ],
+        "current_slug_tab": "all",
+        "items": [
+          {
+            "title": "Сезонная распродажа электроинструментов до 40%",
+            "description": "Только до конца месяца скидки на дрели...",
+            "date": "2026-05-15T12:34:56Z",
+            "slug": "seasonal-power-tools-sale"
+          }
+        ],
+        "meta": { "page": 1, "per_page": 12, "total_pages": 3, "total_items": 28 }
+      }
+    }
+  },
+  "notes": {
+    "query.tab": "По умолчанию 'all'. Допустимые значения совпадают с tabs[*].slug, которые задаёт админ.",
+    "query.per_page": "По умолчанию 12, максимум 50",
+    "title / description": "Статичные тексты страницы (из админки)",
+    "tabs[0]": "Обычно первый таб — 'Все новости' со slug 'all'",
+    "items[]": "Карточки новости — формат shared/news-card",
+    "meta": "Формат shared/pagination"
+  }
+}

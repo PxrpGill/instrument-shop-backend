@@ -75,26 +75,27 @@ class TestRateLimitDecorators:
 
     def test_login_has_ratelimit_decorator(self):
         """Verify login endpoint has rate limit decorator."""
-        from apps.users.api.controllers import login
+        from apps.users.api.auth_controllers import login
 
-        # Check that the function has the ratelimit attribute
-        # The decorator wraps the function
-        func_name = login.__name__
-        assert func_name == "login"
+        assert login.__name__ == "login"
 
     def test_register_has_ratelimit_decorator(self):
         """Verify register endpoint has rate limit decorator."""
-        from apps.users.api.controllers import register
+        from apps.users.api.auth_controllers import register
 
-        func_name = register.__name__
-        assert func_name == "register"
+        assert register.__name__ == "register"
 
     def test_refresh_has_ratelimit_decorator(self):
         """Verify refresh endpoint has rate limit decorator."""
-        from apps.users.api.controllers import refresh_token
+        from apps.users.api.auth_controllers import refresh_tokens
 
-        func_name = refresh_token.__name__
-        assert func_name == "refresh_token"
+        assert refresh_tokens.__name__ == "refresh_tokens"
+
+    def test_forgot_password_has_ratelimit_decorator(self):
+        """Verify forgot-password endpoint has rate limit decorator."""
+        from apps.users.api.auth_controllers import forgot_password
+
+        assert forgot_password.__name__ == "forgot_password"
 
 
 @pytest.mark.django_db

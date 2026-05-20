@@ -128,9 +128,8 @@ def product_factory():
 def auth_headers():
     """Helper to generate authorization headers for a customer."""
     from apps.users.services.customer_service import CustomerService
-    
+
     def _get_headers(customer):
         tokens = CustomerService.generate_tokens(customer)
-        access = tokens["access"]
-        return {"Authorization": f"Bearer {access}"}
+        return {"Authorization": f"Bearer {tokens['access_token']}"}
     return _get_headers

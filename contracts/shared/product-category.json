@@ -1,0 +1,16 @@
+{
+  "$id": "shared/product-category",
+  "description": "Категория товаров. Используется на главной каталога (плитки), в фильтрах, и в карточке товара (одно изделие может относиться к нескольким категориям).",
+  "example": {
+    "title": "Дрели и шуруповёрты",
+    "slug": "drills-and-screwdrivers",
+    "poster": {
+      "webp": { "src": "https://cdn.example.com/categories/drills.webp" }
+    }
+  },
+  "notes": {
+    "title": "Обязательно",
+    "slug": "Обязательно. Используется в URL /catalog/{slug}",
+    "poster": "Опционально, формат shared/picture. Показывается на плитке каталога."
+  }
+}

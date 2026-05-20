@@ -1,0 +1,20 @@
+{
+  "$id": "shared/news-card",
+  "description": "Карточка новости для списка /news.",
+  "example": {
+    "title": "Новая линейка садовой техники 2026",
+    "description": "В продажу поступили газонокосилки, триммеры и кусторезы с улучшенными аккумуляторами",
+    "date": "2026-05-15T12:34:56Z",
+    "slug": "new-garden-equipment-2026",
+    "poster": {
+      "webp": { "src": "https://cdn.example.com/news/garden-2026.webp" }
+    }
+  },
+  "notes": {
+    "title": "Обязательно",
+    "slug": "Обязательно. URL /news/{slug}",
+    "date": "Обязательно. ISO 8601 UTC. Форматирование под пользователя — на фронте",
+    "description": "Опционально, plain text (тизер)",
+    "poster": "Опционально, shared/picture"
+  }
+}

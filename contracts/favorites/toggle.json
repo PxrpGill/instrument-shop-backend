@@ -1,0 +1,29 @@
+{
+  "endpoint_add": "POST /api/favorites/{product_id}",
+  "endpoint_remove": "DELETE /api/favorites/{product_id}",
+  "auth": true,
+  "description": "Добавление/удаление товара из избранного. Идемпотентно: повторный POST уже добавленного товара возвращает 200, повторный DELETE отсутствующего — 204.",
+  "request": {
+    "path": { "product_id": 1 },
+    "body": null
+  },
+  "responses": {
+    "200": {
+      "description": "Только для POST. Товар добавлен (или уже был).",
+      "example": { "is_favorite": true, "total": 5 }
+    },
+    "204": {
+      "description": "Только для DELETE. Тело пустое."
+    },
+    "401": {
+      "example": { "error": { "code": "UNAUTHORIZED", "message": "Требуется авторизация" } }
+    },
+    "404": {
+      "example": { "error": { "code": "NOT_FOUND", "message": "Товар не найден" } }
+    }
+  },
+  "notes": {
+    "200.total": "Новый размер списка избранного",
+    "404": "Возвращается, если product_id не существует в БД (а не если товара нет в избранном)"
+  }
+}

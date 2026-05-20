@@ -1,0 +1,25 @@
+{
+  "endpoint": "GET /api/pages/feedback",
+  "auth": false,
+  "description": "Содержимое страницы /feedback. На бекенде хранятся только заголовки и CTA-блок. Конфигурация полей формы (имена, label, плейсхолдеры, регулярки) — на фронте в FEEDBACK_FORM_SETTINGS. Отправка самой формы — см. contracts/feedback/submit.json.",
+  "request": { "query": {}, "path": {}, "body": null },
+  "responses": {
+    "200": {
+      "example": {
+        "section": {
+          "title": "Возникли вопросы?",
+          "description": "Мы&nbsp;здесь, чтобы помочь.<br /><br /> Заполните форму ниже..."
+        },
+        "news_cta": {
+          "title": "Жизнь нашего магазина",
+          "description": "Мы постоянно обновляем ассортимент...",
+          "button": { "title": "Смотреть новости", "href": "/news" },
+          "poster": { "original": { "src": "https://cdn.example.com/yellow-vector.png" } }
+        }
+      }
+    }
+  },
+  "notes": {
+    "section.description": "HTML (br допустим)"
+  }
+}

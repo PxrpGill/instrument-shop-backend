@@ -18,15 +18,15 @@ class CustomerJWTAuthentication(JWTAuthentication):
         """
         Получение пользователя из токена с предзагрузкой ролей.
         """
-        user_id = validated_token.get('user_id')
-        
-        if not user_id:
-            raise InvalidToken('Токен не содержит user_id')
-        
+        customer_id = validated_token.get('customer_id')
+
+        if not customer_id:
+            raise InvalidToken('Токен не содержит customer_id')
+
         try:
             # Получаем клиента с предзагрузкой ролей
             customer = Customer.objects.prefetch_related('roles').get(
-                id=user_id,
+                id=customer_id,
                 is_active=True
             )
         except Customer.DoesNotExist:

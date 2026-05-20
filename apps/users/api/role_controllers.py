@@ -19,7 +19,7 @@ from apps.users.api.schemas import (
     CustomerRoleListSchema,
     MessageResponse,
 )
-from apps.users.api.controllers import get_customer_from_request
+from apps.users.api.auth_helpers import get_customer_from_request
 from core.auth.exceptions import PermissionDeniedError, RoleNotFoundError
 
 router = Router(tags=["Admin - Roles"])

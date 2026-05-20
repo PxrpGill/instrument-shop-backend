@@ -1,0 +1,22 @@
+{
+  "endpoint": "GET /api/pages/buyers",
+  "auth": false,
+  "description": "Страница «Покупателям» (информация об оплате и порядке покупки). Структурно идентична about-us.",
+  "request": { "query": {}, "path": {}, "body": null },
+  "responses": {
+    "200": {
+      "example": {
+        "banner": {
+          "title": "Покупателям",
+          "description": "Всё необходимое для вашего проекта&nbsp;— в&nbsp;нашем магазине",
+          "poster": { "original": { "src": "https://cdn.example.com/about/yellow-vector.png" } }
+        },
+        "content": "<h2>Важная информация об оплате</h2><p>Наш сайт является <strong>каталогом товаров</strong>...</p><h2>Способы оплаты в магазине</h2><ul><li>Наличные</li><li>Карта</li></ul>"
+      }
+    }
+  },
+  "notes": {
+    "banner": "Большой баннер сверху страницы",
+    "content": "HTML-контент, санитайзить на бекенде"
+  }
+}

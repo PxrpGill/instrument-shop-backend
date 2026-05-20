@@ -1,0 +1,48 @@
+{
+  "endpoint": "GET /api/catalog/categories/{slug}",
+  "auth": false,
+  "description": "Страница одной категории /catalog/{slug}. Возвращает только фильтр цены (без чекбоксов категорий — пользователь уже внутри одной) и пагинированный список товаров этой категории.",
+  "request": {
+    "query": {
+      "page": 1,
+      "per_page": 24,
+      "price_min": 1000,
+      "price_max": 50000,
+      "sort": "popular"
+    },
+    "path": { "slug": "drills-and-screwdrivers" },
+    "body": null
+  },
+  "responses": {
+    "200": {
+      "example": {
+        "category": { "title": "Дрели и шуруповёрты", "slug": "drills-and-screwdrivers" },
+        "filter_block": {
+          "price_filter": { "start_range": 1000, "end_range": 90000 }
+        },
+        "products_block": {
+          "title": "Дрели и шуруповёрты",
+          "products": [
+            {
+              "id": 1,
+              "title": "Дрель ударная Metabo SBE 650",
+              "description": "Мощность 650 Вт...",
+              "sku": "MT-SBE-650",
+              "price": 5490,
+              "category": [{ "title": "Электроинструмент", "slug": "electricity-instrument" }]
+            }
+          ],
+          "meta": { "page": 1, "per_page": 24, "total_pages": 2, "total_items": 35 }
+        }
+      }
+    },
+    "404": {
+      "example": { "error": { "code": "NOT_FOUND", "message": "Категория не найдена" } }
+    }
+  },
+  "notes": {
+    "category": "Метаданные текущей категории — для заголовка и хлебных крошек",
+    "query.sort": "'popular' | 'price_asc' | 'price_desc' | 'new'",
+    "products_block.title": "Обычно равен category.title"
+  }
+}

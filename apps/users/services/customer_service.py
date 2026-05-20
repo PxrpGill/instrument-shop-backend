@@ -1,5 +1,7 @@
-from django.contrib.auth.hashers import check_password, make_password
 from typing import Optional
+
+from django.conf import settings
+from django.contrib.auth.hashers import check_password, make_password
 
 from apps.users.models import Customer
 
@@ -11,6 +13,7 @@ class CustomerService:
     def create_customer(
         email: str,
         password: str,
+        username: str = "",
         phone: str = None,
         first_name: str = None,
         last_name: str = None,
@@ -20,9 +23,10 @@ class CustomerService:
         return Customer.objects.create(
             email=email,
             password_hash=password_hash,
-            phone=phone,
-            first_name=first_name,
-            last_name=last_name,
+            username=username,
+            phone=phone or "",
+            first_name=first_name or "",
+            last_name=last_name or "",
         )
 
     @staticmethod
@@ -63,23 +67,46 @@ class CustomerService:
 
     @staticmethod
     def generate_tokens(customer: Customer) -> dict:
-        """
-        Генерация JWT токенов для клиента.
-        Returns:
-            Словарь с access и refresh токенами
+        """Сгенерировать пару JWT по контракту /api/auth/login.
+
+        Контракт: {access_token, refresh_token, token_type, expires_in}.
+        expires_in — TTL access-токена в секундах из SIMPLE_JWT settings.
         """
         from rest_framework_simplejwt.tokens import RefreshToken
 
-        refresh = RefreshToken()
+        from django.utils import timezone
+        from rest_framework_simplejwt.utils import datetime_from_epoch
 
-        # Only set standard claims that SimpleJWT expects
-        refresh["user_id"] = str(customer.id)
+        refresh = RefreshToken()
+        refresh["customer_id"] = str(customer.id)
         refresh["email"] = customer.email
 
+        # Также прокидываем customer_id в access-токен, чтобы CustomerBearer
+        # мог резолвить клиента без обращения к refresh.
+        access = refresh.access_token
+        access["customer_id"] = str(customer.id)
+        access["email"] = customer.email
+
+        # Регистрируем outstanding-запись для возможности отозвать все
+        # активные сессии (logout без body / reset-password).
+        from apps.users.models import CustomerOutstandingToken
+
+        CustomerOutstandingToken.objects.create(
+            customer=customer,
+            jti=refresh["jti"],
+            expires_at=datetime_from_epoch(refresh["exp"]),
+        )
+
         return {
-            "access": str(refresh.access_token),
-            "refresh": str(refresh),
+            "access_token": str(access),
+            "refresh_token": str(refresh),
+            "token_type": "Bearer",
+            "expires_in": CustomerService.get_access_token_lifetime_seconds(),
         }
+
+    @staticmethod
+    def get_access_token_lifetime_seconds() -> int:
+        return int(settings.SIMPLE_JWT["ACCESS_TOKEN_LIFETIME"].total_seconds())
 
     @staticmethod
     def update_customer(

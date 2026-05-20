@@ -1,0 +1,12 @@
+{
+  "$id": "shared/site-link",
+  "description": "Ссылка для кнопок-CTA и переходов",
+  "example": {
+    "title": "В каталог",
+    "href": "/catalog",
+    "target": "_self"
+  },
+  "notes": {
+    "target": "Опционально. Значения: '_self' (по умолчанию) | '_blank'"
+  }
+}

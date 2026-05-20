@@ -61,6 +61,8 @@ INSTALLED_APPS = [
     "corsheaders",
     "ninja",
     "rest_framework",
+    "rest_framework_simplejwt.token_blacklist",
+    "apps.shared",
     "apps.users",
     "apps.products",
     "apps.orders",
@@ -182,6 +184,11 @@ SIMPLE_JWT = {
     "SIGNING_KEY": SECRET_KEY,
     "AUTH_HEADER_TYPES": ("Bearer",),
     "AUTH_HEADER_NAME": "HTTP_AUTHORIZATION",
+    # USER_ID_CLAIM остаётся "user_id" по умолчанию SimpleJWT. Но мы НЕ
+    # пишем `user_id` в наши токены — пишем `customer_id` (см. CustomerService.
+    # generate_tokens). Так SimpleJWT.blacklist() читает payload.get("user_id")
+    # → None и кладёт NULL в OutstandingToken.user_id (FK на auth.User с int PK,
+    # с которым наш UUID-Customer несовместим).
     "USER_ID_FIELD": "id",
     "USER_ID_CLAIM": "user_id",
 }
@@ -226,6 +233,29 @@ if CORS_ALLOW_CREDENTIALS and "*" in CORS_ALLOWED_ORIGINS:
     raise ValueError(
         "CORS_ALLOWED_ORIGINS cannot contain '*' when CORS_ALLOW_CREDENTIALS is True"
     )
+
+
+# =============================================================================
+# Email Configuration
+# =============================================================================
+
+EMAIL_BACKEND = os.environ.get(
+    "EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend"
+)
+EMAIL_HOST = os.environ.get("EMAIL_HOST", "")
+EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", default=True)
+DEFAULT_FROM_EMAIL = os.environ.get(
+    "DEFAULT_FROM_EMAIL", "noreply@instrument-shop.local"
+)
+
+# URL для ссылки сброса пароля. Placeholder {token} подставляется сервисом.
+PASSWORD_RESET_URL_TEMPLATE = os.environ.get(
+    "PASSWORD_RESET_URL_TEMPLATE",
+    "http://localhost:3000/reset-password?token={token}",
+)
 
 
 # =============================================================================

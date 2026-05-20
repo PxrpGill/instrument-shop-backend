@@ -1,0 +1,23 @@
+{
+  "$id": "shared/picture",
+  "description": "Объект изображения с поддержкой нескольких форматов и mobile-варианта. Все подэлементы (original / webp / avif) опциональны. Фронт перебирает их по приоритету avif → webp → original в <picture>.",
+  "example": {
+    "avif": {
+      "src": "https://cdn.example.com/banner/hero.avif",
+      "mobile": "https://cdn.example.com/banner/hero-mobile.avif"
+    },
+    "webp": {
+      "src": "https://cdn.example.com/banner/hero.webp",
+      "mobile": "https://cdn.example.com/banner/hero-mobile.webp"
+    },
+    "original": {
+      "src": "https://cdn.example.com/banner/hero.jpg",
+      "mobile": "https://cdn.example.com/banner/hero-mobile.jpg"
+    }
+  },
+  "notes": {
+    "*.src": "URL для desktop/tablet",
+    "*.mobile": "URL для media (max-width: 767px) — опциональный отдельный вариант изображения",
+    "backend_processing": "ВАЖНО. Бекенд обязан реализовать автонарезку: в админку грузится один файл (например, original.src = hero.jpg), бекенд через Pillow + pillow-avif-plugin генерирует webp.src и avif.src автоматически. Если админ дополнительно загрузил mobile-вариант (например, original.mobile = hero-mobile.jpg), то аналогично генерируются webp.mobile и avif.mobile. То есть админ грузит 1–2 файла (desktop + опционально mobile), а API отдаёт 4–6 URL. Конвертация — в фоновой задаче (celery / django-q) после загрузки; пока конверсия не готова, можно отдавать только original."
+  }
+}

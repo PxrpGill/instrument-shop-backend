@@ -1,0 +1,30 @@
+{
+  "endpoint": "GET /api/favorites",
+  "auth": true,
+  "description": "Избранное текущего пользователя. Отображается в боковой панели по клику на «сердечко» в шапке. Для неавторизованного пользователя избранное хранится в localStorage на фронте — эндпоинт не вызывается.",
+  "request": { "query": {}, "path": {}, "body": null },
+  "responses": {
+    "200": {
+      "example": {
+        "items": [
+          {
+            "id": 1,
+            "title": "Дрель ударная Metabo SBE 650",
+            "description": "Мощность 650 Вт...",
+            "sku": "MT-SBE-650",
+            "price": 5490,
+            "category": [{ "title": "Электроинструмент", "slug": "electricity-instrument" }]
+          }
+        ],
+        "total": 1
+      }
+    },
+    "401": {
+      "example": { "error": { "code": "UNAUTHORIZED", "message": "Требуется авторизация" } }
+    }
+  },
+  "notes": {
+    "items[]": "Карточки в listing-формате shared/product",
+    "total": "Размер списка избранного (равен items.length, но удобно иметь явно)"
+  }
+}

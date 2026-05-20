@@ -1,0 +1,71 @@
+{
+  "endpoint": "GET /api/pages/home",
+  "auth": false,
+  "description": "Содержимое главной страницы. Управляется из админки. Все блоки опциональны: если редактор не задал блок, фронт его не рендерит.",
+  "request": { "query": {}, "path": {}, "body": null },
+  "responses": {
+    "200": {
+      "example": {
+        "hero": {
+          "title": "Инструменты для работы без компромиссов",
+          "description": "Профессиональное строительное оборудование...<br /><br /> Подбираем решения, которые помогают работать быстрее.",
+          "button": { "title": "Бегом за покупками!", "href": "/catalog" },
+          "poster": { "webp": { "src": "https://cdn.example.com/hero.webp" } }
+        },
+        "about_company": {
+          "title": "Немного о&nbsp;нас",
+          "content": "<h3>Мы за бескомпромиссное качество</h3><p>Наш каталог включает...</p>",
+          "poster": { "webp": { "src": "https://cdn.example.com/about.webp" } }
+        },
+        "reviews": {
+          "title": "Отзывы покупателей",
+          "reviews": [
+            {
+              "title": "Надежный инструмент для ежедневной работы",
+              "description": "Заказывал здесь комплект...",
+              "grade": 5,
+              "author": {
+                "fullName": "Алексей Смирнов",
+                "icon": "https://cdn.example.com/reviews/1.png"
+              }
+            }
+          ]
+        },
+        "showcase": {
+          "title": "Наши товары",
+          "button": { "title": "В каталог", "href": "/catalog" },
+          "showcases": [
+            {
+              "title": "Электроинструмент",
+              "products": [
+                {
+                  "id": 1,
+                  "title": "Дрель ударная Metabo SBE 650",
+                  "description": "Мощность 650 Вт, патрон 1.5–13 мм",
+                  "sku": "MT-SBE-650",
+                  "price": 5490,
+                  "category": [{ "title": "Электроинструмент", "slug": "electricity-instrument" }]
+                }
+              ]
+            }
+          ]
+        },
+        "news_cta": {
+          "title": "Жизнь нашего магазина",
+          "description": "Мы постоянно обновляем ассортимент...",
+          "button": { "title": "Смотреть новости", "href": "/news" },
+          "poster": { "original": { "src": "https://cdn.example.com/yellow-vector.png" } }
+        }
+      }
+    }
+  },
+  "notes": {
+    "hero.description": "HTML — теги <br>, &nbsp; и т.п. допустимы",
+    "about_company.content": "HTML (h3, p)",
+    "reviews.reviews[].grade": "1..5, целое",
+    "reviews.reviews[].author.icon": "Опционально, URL аватарки",
+    "showcase.showcases[]": "Группы товаров. Фронт рисует табы по showcases[*].title",
+    "showcase.showcases[].products[]": "Карточка товара — shared/product (формат listing)",
+    "news_cta": "Блок CTA-перехода внизу страницы, см. shared/site-link для button"
+  }
+}

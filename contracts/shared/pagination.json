@@ -1,0 +1,19 @@
+{
+  "$id": "shared/pagination",
+  "description": "Конверт пагинированного ответа для эндпоинтов списков (каталог, новости).",
+  "request_query_example": {
+    "page": 1,
+    "per_page": 24
+  },
+  "response_meta_example": {
+    "page": 1,
+    "per_page": 24,
+    "total_pages": 10,
+    "total_items": 234
+  },
+  "notes": {
+    "page": "1-based, по умолчанию 1",
+    "per_page": "По умолчанию 24 для каталога, 12 для новостей. Максимум 100.",
+    "total_pages": "Целое; если 0 или 1 — пагинация на фронте не отображается"
+  }
+}

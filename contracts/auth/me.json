@@ -1,0 +1,23 @@
+{
+  "endpoint": "GET /api/auth/me",
+  "auth": true,
+  "description": "Данные текущего пользователя по access_token. Используется фронтом при инициализации сессии — определить авторизованность и показать имя в шапке.",
+  "request": { "query": {}, "path": {}, "body": null },
+  "responses": {
+    "200": {
+      "example": {
+        "id": "550e8400-e29b-41d4-a716-446655440000",
+        "username": "Иван",
+        "email": "ivan@example.com",
+        "created_at": "2026-05-20T10:15:00Z"
+      }
+    },
+    "401": {
+      "example": { "error": { "code": "UNAUTHORIZED", "message": "Требуется авторизация" } }
+    }
+  },
+  "notes": {
+    "id": "UUID-строка. Фронт должен трактовать как opaque string, без предположений о формате.",
+    "created_at": "ISO 8601 UTC"
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "endpoint": "GET /api/news/{slug}",
+  "auth": false,
+  "description": "Страница одной новости. Заголовок и тизер выводятся в баннере, content — в MarkupContent.",
+  "request": {
+    "query": {},
+    "path": { "slug": "new-garden-equipment-2026" },
+    "body": null
+  },
+  "responses": {
+    "200": {
+      "example": {
+        "banner": {
+          "title": "Новая линейка садовой техники 2026",
+          "description": "В продажу поступили газонокосилки, триммеры и кусторезы...",
+          "poster": { "original": { "src": "https://cdn.example.com/news/garden-2026.png" } }
+        },
+        "content": "<p>В мае 2026 года мы пополнили каталог...</p><h2>Что вошло в линейку</h2><ul><li>...</li></ul>",
+        "date": "2026-05-15T12:34:56Z",
+        "slug": "new-garden-equipment-2026"
+      }
+    },
+    "404": {
+      "example": { "error": { "code": "NOT_FOUND", "message": "Новость не найдена" } }
+    }
+  },
+  "notes": {
+    "banner.title": "Обязательно",
+    "banner.description": "Опционально (тизер)",
+    "content": "HTML, санитайзить на бекенде (p, h2, h3, ul, ol, blockquote, strong, em)",
+    "date": "ISO 8601 UTC"
+  }
+}

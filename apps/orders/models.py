@@ -1,6 +1,6 @@
 from django.db import models
 
-from apps.products.models import TimeStampedModel
+from apps.shared.models import TimeStampedModel
 
 
 class OrderStatusChoices(models.TextChoices):
