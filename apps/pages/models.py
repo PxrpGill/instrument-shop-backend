@@ -1,187 +1,480 @@
+"""Жёстко типизированные модели публичных страниц.
+
+Каждая страница — singleton (pk=1). Структуру определяет соответствующий
+контракт в `contracts/pages/*.json`. Универсального page builder здесь нет.
+"""
+
+from __future__ import annotations
+
 from django.db import models
-from django.utils.text import slugify
 
-from apps.products.models import TimeStampedModel
-
-
-class BlockStatusChoices(models.TextChoices):
-    """Статусы контентного блока."""
-
-    DRAFT = "draft", "Черновик"
-    PUBLISHED = "published", "Опубликован"
+from apps.products.models import Product
+from apps.reviews.models import Review
+from apps.shared.models import Image, TimeStampedModel
+from apps.shared.services.sanitize import sanitize_html
 
 
-class BlockTypeChoices(models.TextChoices):
-    """Типы контентных блоков."""
+class SingletonModel(TimeStampedModel):
+    """База для singleton-страниц.
 
-    HERO = "hero", "Hero/CTA блок"
-    TEXT = "text", "Текст"
-    FAQ = "faq", "FAQ (вопросы-ответы)"
-    FEATURES = "features", "Преимущества"
-    GALLERY = "gallery", "Галерея"
-    REVIEWS = "reviews", "Отзывы"
-    BANNER = "banner", "Баннер"
-    VIDEO = "video", "Видео"
-    STATISTICS = "statistics", "Статистика/Цифры"
-    CONTACTS = "contacts", "Контакты"
-
-
-# =============================================================================
-# Content Block Templates
-# =============================================================================
-# Каждый тип блока ожидает определённую структуру JSON в поле `content`:
-#
-# hero:
-#   {title, subtitle, text, button_text, button_url, background_image, background_color}
-# text:
-#   {content, alignment}
-# faq:
-#   {items: [{question, answer}]}
-# features:
-#   {items: [{icon, title, description}]}
-# gallery:
-#   {images: [{image, alt_text}]}
-# reviews:
-#   {items: [{author_name, author_title, text, avatar, rating}]}
-# banner:
-#   {image, link_url, link_text, alt_text}
-# video:
-#   {embed_url, title, description}
-# statistics:
-#   {items: [{number, label, prefix, suffix}]}
-# contacts:
-#   {address, phone, email, working_hours, map_coordinates}
-
-
-class ContentBlock(TimeStampedModel):
-    """Модель контентного блока.
-
-    Блок хранит typed-контент в JSONField. Тип блока определяет,
-    как фронтенд будет интерпретировать данные.
-    Блок может быть переиспользован на разных страницах.
+    Гарантирует ровно одну запись с pk=1. Создаётся лениво
+    через get_solo(), запись не удаляется через delete().
     """
 
-    title = models.CharField(
-        max_length=255,
-        verbose_name="Название",
-        help_text="Внутреннее название блока для админки",
-    )
-    block_type = models.CharField(
-        max_length=20,
-        choices=BlockTypeChoices.choices,
-        verbose_name="Тип блока",
-        help_text="Выберите тип контентного блока",
-    )
-    content = models.JSONField(
-        default=dict,
-        blank=True,
-        verbose_name="Содержимое блока",
-        help_text="Данные блока в формате JSON. Структура зависит от типа блока.",
-    )
-    status = models.CharField(
-        max_length=20,
-        choices=BlockStatusChoices.choices,
-        default=BlockStatusChoices.DRAFT,
-        verbose_name="Статус",
-        help_text="Черновик — блок не отображается на сайте. Опубликован — блок виден на сайте.",
-    )
-
     class Meta:
-        verbose_name = "Блок контента"
-        verbose_name_plural = "Блоки контента"
-        ordering = ["-created_at"]
-
-    def __str__(self) -> str:
-        return f"{self.get_block_type_display()}: {self.title}"
-
-
-class Page(TimeStampedModel):
-    """Модель страницы сайта.
-
-    Страница объединяет контентные блоки в определённом порядке
-    и содержит SEO-метаданные для поисковой оптимизации.
-    """
-
-    title = models.CharField(
-        max_length=255,
-        verbose_name="Заголовок",
-        help_text="Заголовок страницы",
-    )
-    slug = models.SlugField(
-        max_length=255,
-        unique=True,
-        verbose_name="URL-идентификатор",
-        help_text="Уникальный идентификатор для URL. Автоматически генерируется из заголовка.",
-    )
-    meta_title = models.CharField(
-        max_length=255,
-        blank=True,
-        default="",
-        verbose_name="Meta Title",
-        help_text="SEO-заголовок для поисковых систем. Если не указан, используется заголовок страницы.",
-    )
-    meta_description = models.TextField(
-        blank=True,
-        default="",
-        verbose_name="Meta Description",
-        help_text="SEO-описание для поисковых систем.",
-    )
-    og_image = models.ImageField(
-        upload_to="pages/og/",
-        blank=True,
-        null=True,
-        verbose_name="OG изображение",
-        help_text="Изображение для предпросмотра при отправке ссылки в соцсетях.",
-    )
-    blocks = models.ManyToManyField(
-        ContentBlock,
-        through="PageBlock",
-        through_fields=("page", "block"),
-        related_name="pages",
-        verbose_name="Блоки",
-        help_text="Контентные блоки, отображаемые на этой странице.",
-    )
-
-    class Meta:
-        verbose_name = "Страница"
-        verbose_name_plural = "Страницы"
-        ordering = ["title"]
-
-    def __str__(self) -> str:
-        return self.title
+        abstract = True
 
     def save(self, *args, **kwargs):
-        if not self.slug:
-            self.slug = slugify(self.title)
+        self.pk = 1
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):  # pragma: no cover - защита от случайного удаления
+        pass
+
+    @classmethod
+    def get_solo(cls):
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+
+# =============================================================================
+# Home page
+# =============================================================================
+
+
+class HomePage(SingletonModel):
+    """Главная страница: hero + about + reviews + showcase + news_cta.
+
+    Каждая секция опциональна. Если у hero нет title — секция не отдаётся
+    клиенту целиком (см. apps/pages/services.py::serialize_home_page).
+    """
+
+    # ---- hero ----
+    hero_title = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        verbose_name="Hero · заголовок",
+    )
+    hero_description = models.TextField(
+        blank=True,
+        default="",
+        verbose_name="Hero · описание (HTML)",
+        help_text="Допустимы теги br, p, strong, em и т. п. (см. sanitize_html).",
+    )
+    hero_button_title = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        verbose_name="Hero · текст кнопки",
+    )
+    hero_button_href = models.CharField(
+        max_length=500,
+        blank=True,
+        default="",
+        verbose_name="Hero · ссылка кнопки",
+    )
+    hero_poster = models.ForeignKey(
+        Image,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+        verbose_name="Hero · постер",
+    )
+
+    # ---- about_company ----
+    about_title = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        verbose_name="О компании · заголовок",
+    )
+    about_content = models.TextField(
+        blank=True,
+        default="",
+        verbose_name="О компании · содержимое (HTML)",
+    )
+    about_poster = models.ForeignKey(
+        Image,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+        verbose_name="О компании · постер",
+    )
+
+    # ---- reviews ----
+    reviews_title = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        verbose_name="Отзывы · заголовок",
+    )
+    reviews = models.ManyToManyField(
+        Review,
+        through="HomePageReview",
+        related_name="home_pages",
+        blank=True,
+        verbose_name="Отзывы",
+    )
+
+    # ---- showcase ----
+    showcase_title = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        verbose_name="Витрина · заголовок",
+    )
+    showcase_button_title = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        verbose_name="Витрина · текст кнопки",
+    )
+    showcase_button_href = models.CharField(
+        max_length=500,
+        blank=True,
+        default="",
+        verbose_name="Витрина · ссылка кнопки",
+    )
+
+    # ---- news_cta ----
+    news_cta_title = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        verbose_name="Новости · заголовок",
+    )
+    news_cta_description = models.TextField(
+        blank=True,
+        default="",
+        verbose_name="Новости · описание",
+    )
+    news_cta_button_title = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        verbose_name="Новости · текст кнопки",
+    )
+    news_cta_button_href = models.CharField(
+        max_length=500,
+        blank=True,
+        default="",
+        verbose_name="Новости · ссылка кнопки",
+    )
+    news_cta_poster = models.ForeignKey(
+        Image,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+        verbose_name="Новости · постер",
+    )
+
+    class Meta:
+        verbose_name = "Главная страница"
+        verbose_name_plural = "Главная страница"
+
+    def __str__(self) -> str:
+        return "Главная страница"
+
+    def save(self, *args, **kwargs):
+        self.hero_description = sanitize_html(self.hero_description)
+        self.about_content = sanitize_html(self.about_content)
+        self.news_cta_description = sanitize_html(self.news_cta_description)
         super().save(*args, **kwargs)
 
 
-class PageBlock(TimeStampedModel):
-    """Промежуточная модель для связи Page и ContentBlock с сортировкой."""
+class HomePageReview(models.Model):
+    """Through-модель: какие отзывы показываем на главной и в каком порядке."""
 
-    page = models.ForeignKey(
-        Page,
+    home_page = models.ForeignKey(
+        HomePage,
         on_delete=models.CASCADE,
-        related_name="page_blocks",
-        verbose_name="Страница",
+        related_name="home_reviews",
     )
-    block = models.ForeignKey(
-        ContentBlock,
+    review = models.ForeignKey(
+        Review,
         on_delete=models.CASCADE,
-        related_name="page_blocks",
-        verbose_name="Блок",
+        related_name="+",
     )
     order = models.PositiveIntegerField(
         default=0,
         verbose_name="Порядок",
-        help_text="Порядок отображения блока на странице.",
     )
 
     class Meta:
-        verbose_name = "Блок на странице"
-        verbose_name_plural = "Блоки на странице"
+        verbose_name = "Отзыв на главной"
+        verbose_name_plural = "Отзывы на главной"
         ordering = ["order"]
-        unique_together = [["page", "block"]]
+        unique_together = [("home_page", "review")]
 
     def __str__(self) -> str:
-        return f"{self.page.title} → {self.block.title} (порядок: {self.order})"
+        return f"{self.review} (порядок: {self.order})"
+
+
+class HomePageShowcase(models.Model):
+    """Группа товаров на главной (вкладка в витрине)."""
+
+    home_page = models.ForeignKey(
+        HomePage,
+        on_delete=models.CASCADE,
+        related_name="showcases",
+    )
+    title = models.CharField(
+        max_length=255,
+        verbose_name="Название группы",
+        help_text="Подпись таба на витрине, например «Электроинструмент».",
+    )
+    order = models.PositiveIntegerField(
+        default=0,
+        verbose_name="Порядок",
+    )
+    products = models.ManyToManyField(
+        Product,
+        through="HomePageShowcaseProduct",
+        related_name="home_showcases",
+        blank=True,
+        verbose_name="Товары",
+    )
+
+    class Meta:
+        verbose_name = "Группа витрины"
+        verbose_name_plural = "Группы витрины"
+        ordering = ["order"]
+
+    def __str__(self) -> str:
+        return self.title
+
+
+class HomePageShowcaseProduct(models.Model):
+    """Through-модель: товар внутри группы витрины + порядок."""
+
+    showcase = models.ForeignKey(
+        HomePageShowcase,
+        on_delete=models.CASCADE,
+        related_name="showcase_products",
+    )
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name="+",
+    )
+    order = models.PositiveIntegerField(
+        default=0,
+        verbose_name="Порядок",
+    )
+
+    class Meta:
+        verbose_name = "Товар в группе витрины"
+        verbose_name_plural = "Товары в группах витрины"
+        ordering = ["order"]
+        unique_together = [("showcase", "product")]
+
+    def __str__(self) -> str:
+        return f"{self.showcase.title}: {self.product.name}"
+
+
+# =============================================================================
+# About-us / Buyers (структурно идентичны)
+# =============================================================================
+
+
+class BannerContentPageMixin(SingletonModel):
+    """Общая структура страниц с баннером сверху и HTML-контентом."""
+
+    banner_title = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        verbose_name="Баннер · заголовок",
+    )
+    banner_description = models.TextField(
+        blank=True,
+        default="",
+        verbose_name="Баннер · описание",
+    )
+    banner_poster = models.ForeignKey(
+        Image,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+        verbose_name="Баннер · постер",
+    )
+    content = models.TextField(
+        blank=True,
+        default="",
+        verbose_name="Контент (HTML)",
+        help_text="HTML рендерится на фронте через dangerouslySetInnerHTML.",
+    )
+
+    class Meta:
+        abstract = True
+
+    def save(self, *args, **kwargs):
+        self.content = sanitize_html(self.content)
+        super().save(*args, **kwargs)
+
+
+class AboutUsPage(BannerContentPageMixin):
+    class Meta:
+        verbose_name = "Страница «О компании»"
+        verbose_name_plural = "Страница «О компании»"
+
+    def __str__(self) -> str:
+        return "О компании"
+
+
+class BuyersPage(BannerContentPageMixin):
+    class Meta:
+        verbose_name = "Страница «Покупателям»"
+        verbose_name_plural = "Страница «Покупателям»"
+
+    def __str__(self) -> str:
+        return "Покупателям"
+
+
+# =============================================================================
+# Feedback page
+# =============================================================================
+
+
+class FeedbackPage(SingletonModel):
+    """Страница /feedback: только заголовок секции + news_cta."""
+
+    section_title = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        verbose_name="Секция · заголовок",
+    )
+    section_description = models.TextField(
+        blank=True,
+        default="",
+        verbose_name="Секция · описание (HTML)",
+    )
+
+    news_cta_title = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        verbose_name="Новости · заголовок",
+    )
+    news_cta_description = models.TextField(
+        blank=True,
+        default="",
+        verbose_name="Новости · описание",
+    )
+    news_cta_button_title = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        verbose_name="Новости · текст кнопки",
+    )
+    news_cta_button_href = models.CharField(
+        max_length=500,
+        blank=True,
+        default="",
+        verbose_name="Новости · ссылка кнопки",
+    )
+    news_cta_poster = models.ForeignKey(
+        Image,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+        verbose_name="Новости · постер",
+    )
+
+    class Meta:
+        verbose_name = "Страница «Обратная связь»"
+        verbose_name_plural = "Страница «Обратная связь»"
+
+    def __str__(self) -> str:
+        return "Обратная связь"
+
+    def save(self, *args, **kwargs):
+        self.section_description = sanitize_html(self.section_description)
+        self.news_cta_description = sanitize_html(self.news_cta_description)
+        super().save(*args, **kwargs)
+
+
+# =============================================================================
+# Legal documents
+# =============================================================================
+
+
+class LegalDocumentSlugChoices(models.TextChoices):
+    PRIVACY_POLICY = "privacy-policy", "Политика конфиденциальности"
+    USER_AGREEMENT = "user-agreement", "Пользовательское соглашение"
+    PERSONAL_DATA_CONSENT = (
+        "personal-data-consent",
+        "Согласие на обработку персональных данных",
+    )
+
+
+class LegalDocument(TimeStampedModel):
+    """Юридический документ. Три фиксированных значения slug."""
+
+    slug = models.CharField(
+        max_length=64,
+        primary_key=True,
+        choices=LegalDocumentSlugChoices.choices,
+        verbose_name="Slug",
+    )
+    title = models.CharField(
+        max_length=255,
+        verbose_name="Заголовок",
+    )
+    last_updated = models.CharField(
+        max_length=10,
+        verbose_name="Дата обновления",
+        help_text="Формат ДД.ММ.ГГГГ (как отображается на фронте).",
+    )
+
+    class Meta:
+        verbose_name = "Юридический документ"
+        verbose_name_plural = "Юридические документы"
+        ordering = ["slug"]
+
+    def __str__(self) -> str:
+        return self.title or self.get_slug_display()
+
+
+class LegalSection(models.Model):
+    """Раздел юридического документа. Plain text, абзацы — `\\n\\n`."""
+
+    document = models.ForeignKey(
+        LegalDocument,
+        on_delete=models.CASCADE,
+        related_name="sections",
+        verbose_name="Документ",
+    )
+    anchor_id = models.SlugField(
+        max_length=64,
+        verbose_name="Якорь (id)",
+        help_text="Уникален в пределах документа. Используется для TOC и якорей.",
+    )
+    title = models.CharField(
+        max_length=255,
+        verbose_name="Заголовок раздела",
+    )
+    content = models.TextField(
+        verbose_name="Текст",
+        help_text="Plain text. Абзацы разделяются двумя переводами строки.",
+    )
+    order = models.PositiveIntegerField(
+        default=0,
+        verbose_name="Порядок",
+    )
+
+    class Meta:
+        verbose_name = "Раздел документа"
+        verbose_name_plural = "Разделы документа"
+        ordering = ["order"]
+        unique_together = [("document", "anchor_id")]
+
+    def __str__(self) -> str:
+        return f"{self.document_id} · {self.title}"

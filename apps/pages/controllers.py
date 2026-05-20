@@ -1,58 +1,81 @@
+"""Публичные эндпоинты публичных страниц.
+
+Все эндпоинты не требуют аутентификации. Возвращают чистые dict (не Pydantic),
+поэтому опциональные поля просто отсутствуют в JSON, а не равны null.
 """
-Public API endpoints for pages.
-No authentication required — pages are public content.
-"""
+
+from __future__ import annotations
 
 from django.http import HttpRequest
-from django.shortcuts import get_object_or_404
 from ninja import Router
 
-from apps.pages.models import BlockStatusChoices, Page
-from apps.pages.schemas import ContentBlockOut, PageOut
+from apps.shared.errors import not_found
 
-# =============================================================================
-# Router
-# =============================================================================
+from .models import (
+    AboutUsPage,
+    BuyersPage,
+    FeedbackPage,
+    HomePage,
+    LegalDocument,
+)
+from .services import (
+    serialize_banner_page,
+    serialize_feedback_page,
+    serialize_home_page,
+    serialize_legal_document,
+)
+
 router = Router(tags=["Pages"])
 
 
 @router.get(
-    "/pages/{slug}/",
-    response=PageOut,
-    description="Получить страницу по slug с опубликованными блоками",
-    summary="Get page with published blocks",
+    "/home",
+    description="Главная страница сайта (контракт contracts/pages/home.json).",
+    summary="Get home page",
 )
-def get_page(request: HttpRequest, slug: str):
-    """Get a page by slug with its published blocks in order.
+def get_home_page(request: HttpRequest):
+    page = HomePage.get_solo()
+    return serialize_home_page(page, request)
 
-    Returns only blocks with status PUBLISHED,
-    ordered by their position on the page.
-    """
-    page = get_object_or_404(
-        Page.objects.prefetch_related("page_blocks__block"),
-        slug=slug,
-    )
 
-    # Get published blocks in correct order
-    published_page_blocks = (
-        page.page_blocks.filter(block__status=BlockStatusChoices.PUBLISHED)
-        .order_by("order")
-        .select_related("block")
-    )
+@router.get(
+    "/about-us",
+    description="Страница «О компании» (контракт contracts/pages/about-us.json).",
+    summary="Get about-us page",
+)
+def get_about_us_page(request: HttpRequest):
+    page = AboutUsPage.get_solo()
+    return serialize_banner_page(page, request)
 
-    return PageOut(
-        id=page.id,
-        title=page.title,
-        slug=page.slug,
-        meta_title=page.meta_title or None,
-        meta_description=page.meta_description or None,
-        og_image=page.og_image.url if page.og_image else None,
-        blocks=[
-            ContentBlockOut(
-                id=pb.block.id,
-                block_type=pb.block.block_type,
-                content=pb.block.content,
-            )
-            for pb in published_page_blocks
-        ],
-    )
+
+@router.get(
+    "/buyers",
+    description="Страница «Покупателям» (контракт contracts/pages/buyers.json).",
+    summary="Get buyers page",
+)
+def get_buyers_page(request: HttpRequest):
+    page = BuyersPage.get_solo()
+    return serialize_banner_page(page, request)
+
+
+@router.get(
+    "/feedback",
+    description="Страница обратной связи (контракт contracts/pages/feedback.json).",
+    summary="Get feedback page",
+)
+def get_feedback_page(request: HttpRequest):
+    page = FeedbackPage.get_solo()
+    return serialize_feedback_page(page, request)
+
+
+@router.get(
+    "/legal/{slug}",
+    description="Юридический документ по slug (privacy-policy, user-agreement, personal-data-consent).",
+    summary="Get legal document",
+)
+def get_legal_document(request: HttpRequest, slug: str):
+    try:
+        doc = LegalDocument.objects.prefetch_related("sections").get(pk=slug)
+    except LegalDocument.DoesNotExist as exc:
+        raise not_found("Документ не найден") from exc
+    return serialize_legal_document(doc)

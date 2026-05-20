@@ -34,8 +34,8 @@ api.add_router("/v1/orders/", orders_router)
 # Public storefront catalog (contracts/catalog/*)
 api.add_router("/catalog", catalog_router)
 
-# Pages (public content)
-api.add_router("/v1/public/", pages_router)
+# Pages (public content) — см. contracts/pages/*
+api.add_router("/pages/", pages_router)
 
 
 @api.get("/hello")

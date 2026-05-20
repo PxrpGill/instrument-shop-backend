@@ -1,46 +1,171 @@
+"""Админка публичных страниц (django-unfold).
+
+Все страницы — singleton'ы (pk=1). Кнопки «Добавить» и «Удалить» скрыты,
+существующая запись создаётся лениво при первом обращении через get_solo().
+LegalDocument — три фиксированные записи (создаются вручную через сидинг
+или вручную в админке, после чего add/delete блокируются).
 """
-Admin configuration for pages app using Unfold.
-"""
+
+from __future__ import annotations
 
 from django.contrib import admin
-from django.contrib.admin import TabularInline
-from unfold.admin import ModelAdmin
+from django.shortcuts import redirect
+from django.urls import path, reverse
+from unfold.admin import ModelAdmin, StackedInline, TabularInline
 
-from apps.pages.models import ContentBlock, Page, PageBlock
+from .models import (
+    AboutUsPage,
+    BuyersPage,
+    FeedbackPage,
+    HomePage,
+    HomePageReview,
+    HomePageShowcase,
+    HomePageShowcaseProduct,
+    LegalDocument,
+    LegalDocumentSlugChoices,
+    LegalSection,
+)
 
 
-class PageBlockInline(TabularInline):
-    """Inline для управления блоками на странице."""
+class SingletonAdminMixin:
+    """Свойства, общие для singleton-страниц.
 
-    model = PageBlock
-    extra = 1
-    fields = ["block", "order"]
-    autocomplete_fields = ["block"]
-    ordering = ["order"]
-    verbose_name = "Блок на странице"
-    verbose_name_plural = "Блоки на странице"
+    - убираем «Добавить» и «Удалить»,
+    - чейнджлист подменяется редиректом на форму единственной записи.
+    """
+
+    def has_add_permission(self, request, obj=None) -> bool:
+        return not self.model.objects.exists()
+
+    def has_delete_permission(self, request, obj=None) -> bool:
+        return False
+
+    def get_urls(self):
+        urls = super().get_urls()
+        app_label = self.model._meta.app_label
+        model_name = self.model._meta.model_name
+        custom = [
+            path(
+                "",
+                self.admin_site.admin_view(self._singleton_redirect),
+                name=f"{app_label}_{model_name}_changelist",
+            ),
+        ]
+        # Перекрываем стандартный changelist кастомным редиректом — он первым.
+        return custom + urls
+
+    def _singleton_redirect(self, request):
+        obj = self.model.get_solo()
+        return redirect(
+            reverse(
+                f"admin:{self.model._meta.app_label}_{self.model._meta.model_name}_change",
+                args=[obj.pk],
+            )
+        )
 
 
-@admin.register(Page, site=admin.site)
-class PageAdmin(ModelAdmin):
-    """Админ-панель для модели Page."""
+# =============================================================================
+# Home page
+# =============================================================================
 
-    list_display = ("title", "slug", "block_count", "created_at")
-    search_fields = ("title", "slug")
-    prepopulated_fields = {"slug": ("title",)}
-    inlines = [PageBlockInline]
+
+class HomePageReviewInline(TabularInline):
+    model = HomePageReview
+    extra = 0
+    fields = ("review", "order")
+    autocomplete_fields = ("review",)
+    ordering = ("order",)
+    verbose_name = "Отзыв"
+    verbose_name_plural = "Отзывы на главной"
+
+
+class HomePageShowcaseProductInline(TabularInline):
+    model = HomePageShowcaseProduct
+    extra = 0
+    fields = ("product", "order")
+    autocomplete_fields = ("product",)
+    ordering = ("order",)
+    verbose_name = "Товар"
+    verbose_name_plural = "Товары в группе"
+
+
+@admin.register(HomePageShowcase, site=admin.site)
+class HomePageShowcaseAdmin(ModelAdmin):
+    """Группа товаров на главной. Редактируется отдельной страницей,
+    потому что Django не поддерживает nested-inline.
+    """
+
+    list_display = ("title", "home_page", "order")
+    list_filter = ("home_page",)
+    search_fields = ("title",)
+    ordering = ("order",)
+    inlines = [HomePageShowcaseProductInline]
+
+
+class HomePageShowcaseInline(TabularInline):
+    """Внутри HomePageAdmin показываем только список групп — переход на
+    редактирование товаров идёт по ссылке на отдельный change-view группы.
+    """
+
+    model = HomePageShowcase
+    extra = 0
+    fields = ("title", "order")
+    show_change_link = True
+    ordering = ("order",)
+    verbose_name = "Группа витрины"
+    verbose_name_plural = "Группы витрины"
+
+
+@admin.register(HomePage, site=admin.site)
+class HomePageAdmin(SingletonAdminMixin, ModelAdmin):
+    inlines = [HomePageReviewInline, HomePageShowcaseInline]
+    autocomplete_fields = ("hero_poster", "about_poster", "news_cta_poster")
     readonly_fields = ("created_at", "updated_at")
     fieldsets = (
         (
-            "Основное",
+            "Hero",
             {
-                "fields": ("title", "slug"),
+                "fields": (
+                    "hero_title",
+                    "hero_description",
+                    "hero_button_title",
+                    "hero_button_href",
+                    "hero_poster",
+                ),
             },
         ),
         (
-            "SEO",
+            "О компании",
             {
-                "fields": ("meta_title", "meta_description", "og_image"),
+                "fields": ("about_title", "about_content", "about_poster"),
+            },
+        ),
+        (
+            "Отзывы",
+            {
+                "fields": ("reviews_title",),
+            },
+        ),
+        (
+            "Витрина",
+            {
+                "fields": (
+                    "showcase_title",
+                    "showcase_button_title",
+                    "showcase_button_href",
+                ),
+            },
+        ),
+        (
+            "Новости (CTA)",
+            {
+                "fields": (
+                    "news_cta_title",
+                    "news_cta_description",
+                    "news_cta_button_title",
+                    "news_cta_button_href",
+                    "news_cta_poster",
+                ),
             },
         ),
         (
@@ -51,35 +176,26 @@ class PageAdmin(ModelAdmin):
         ),
     )
 
-    def block_count(self, obj) -> int:
-        """Количество блоков на странице."""
-        return obj.blocks.count()
 
-    block_count.short_description = "Кол-во блоков"
+# =============================================================================
+# About-us / Buyers
+# =============================================================================
 
 
-@admin.register(ContentBlock, site=admin.site)
-class ContentBlockAdmin(ModelAdmin):
-    """Админ-панель для модели ContentBlock."""
-
-    list_display = ("title", "block_type", "status", "created_at")
-    list_filter = ("block_type", "status")
-    search_fields = ("title",)
-    list_editable = ("status",)
+class _BannerPageAdmin(SingletonAdminMixin, ModelAdmin):
+    autocomplete_fields = ("banner_poster",)
     readonly_fields = ("created_at", "updated_at")
     fieldsets = (
         (
-            "Основное",
+            "Баннер",
             {
-                "fields": ("title", "block_type", "status"),
+                "fields": ("banner_title", "banner_description", "banner_poster"),
             },
         ),
         (
-            "Содержимое",
+            "Контент",
             {
                 "fields": ("content",),
-                "classes": ("wide",),
-                "description": "JSON-данные блока. Структура зависит от выбранного типа.",
             },
         ),
         (
@@ -89,3 +205,78 @@ class ContentBlockAdmin(ModelAdmin):
             },
         ),
     )
+
+
+@admin.register(AboutUsPage, site=admin.site)
+class AboutUsPageAdmin(_BannerPageAdmin):
+    pass
+
+
+@admin.register(BuyersPage, site=admin.site)
+class BuyersPageAdmin(_BannerPageAdmin):
+    pass
+
+
+# =============================================================================
+# Feedback
+# =============================================================================
+
+
+@admin.register(FeedbackPage, site=admin.site)
+class FeedbackPageAdmin(SingletonAdminMixin, ModelAdmin):
+    autocomplete_fields = ("news_cta_poster",)
+    readonly_fields = ("created_at", "updated_at")
+    fieldsets = (
+        (
+            "Секция",
+            {
+                "fields": ("section_title", "section_description"),
+            },
+        ),
+        (
+            "Новости (CTA)",
+            {
+                "fields": (
+                    "news_cta_title",
+                    "news_cta_description",
+                    "news_cta_button_title",
+                    "news_cta_button_href",
+                    "news_cta_poster",
+                ),
+            },
+        ),
+        (
+            "Даты",
+            {
+                "fields": ("created_at", "updated_at"),
+            },
+        ),
+    )
+
+
+# =============================================================================
+# Legal documents
+# =============================================================================
+
+
+class LegalSectionInline(StackedInline):
+    model = LegalSection
+    extra = 0
+    fields = ("anchor_id", "title", "content", "order")
+    ordering = ("order",)
+
+
+@admin.register(LegalDocument, site=admin.site)
+class LegalDocumentAdmin(ModelAdmin):
+    list_display = ("slug", "title", "last_updated")
+    search_fields = ("title",)
+    ordering = ("slug",)
+    inlines = [LegalSectionInline]
+
+    def has_add_permission(self, request) -> bool:
+        existing = set(LegalDocument.objects.values_list("slug", flat=True))
+        all_slugs = {choice for choice, _ in LegalDocumentSlugChoices.choices}
+        return bool(all_slugs - existing)
+
+    def has_delete_permission(self, request, obj=None) -> bool:
+        return False
