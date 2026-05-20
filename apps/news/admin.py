@@ -11,6 +11,7 @@ from django.shortcuts import redirect
 from django.urls import path, reverse
 from unfold.admin import ModelAdmin
 
+from apps.shared.admin_mixins import RichTextAdminMixin
 from .models import NewsArticle, NewsPageSettings, NewsTab
 
 
@@ -24,7 +25,8 @@ class NewsTabAdmin(ModelAdmin):
 
 
 @admin.register(NewsArticle, site=admin.site)
-class NewsArticleAdmin(ModelAdmin):
+class NewsArticleAdmin(RichTextAdminMixin, ModelAdmin):
+    full_rich_fields = ("content",)
     list_display = ("title", "slug", "tab", "status", "date")
     list_filter = ("status", "tab")
     search_fields = ("title", "slug", "description")

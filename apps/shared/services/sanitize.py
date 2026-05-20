@@ -26,11 +26,13 @@ ALLOWED_TAGS = [
     "li",
     "a",
     "span",
+    "img",
 ]
 
 ALLOWED_ATTRIBUTES = {
     "a": ["href", "title", "target", "rel"],
     "span": ["class"],
+    "img": ["src", "alt", "width", "height"],
 }
 
 ALLOWED_PROTOCOLS = ["http", "https", "mailto", "tel"]

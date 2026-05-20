@@ -45,3 +45,17 @@ def test_sanitize_keeps_safe_link():
     html = '<a href="mailto:test@example.com">mail</a>'
     result = sanitize_html(html)
     assert "mailto:test@example.com" in result
+
+
+def test_sanitize_keeps_img_tag():
+    html = '<img src="/media/uploads/photo.jpg" alt="Photo" width="800" height="600">'
+    result = sanitize_html(html)
+    assert '<img' in result
+    assert 'src="/media/uploads/photo.jpg"' in result
+    assert 'alt="Photo"' in result
+
+
+def test_sanitize_strips_img_onerror():
+    html = '<img src="x" onerror="alert(1)">'
+    result = sanitize_html(html)
+    assert 'onerror' not in result
