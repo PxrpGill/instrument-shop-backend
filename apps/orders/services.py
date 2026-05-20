@@ -6,11 +6,15 @@ All business logic for orders should be placed here, keeping controllers thin.
 """
 
 from decimal import Decimal
-from typing import Optional
 
 from django.db import transaction
 
-from apps.orders.models import Order, OrderItem, OrderStatusChoices
+from apps.orders.models import (
+    DeliveryTypeChoices,
+    Order,
+    OrderItem,
+    OrderStatusChoices,
+)
 from apps.orders.schemas import OrderCreateSchema, OrderItemCreateSchema
 from apps.products.models import Product, ProductStatusChoices
 from apps.users.models import Customer
@@ -32,6 +36,8 @@ class OrderService:
     and price snapshotting.
     """
 
+    ORDER_NUMBER_PAD = 5
+
     @classmethod
     def create_order(
         cls,
@@ -51,8 +57,11 @@ class OrderService:
         Raises:
             OrderCreationError: If validation fails (e.g., product not published)
         """
-        # Create order in transaction
         with transaction.atomic():
+            # Лочим строку клиента, чтобы порядковый номер заказа для данного клиента
+            # был детерминирован при параллельных запросах.
+            Customer.objects.select_for_update().filter(pk=customer.pk).first()
+
             # Validate all products inside the transaction to prevent race conditions
             product_ids = [item.product_id for item in order_data.items]
             products = cls._validate_and_get_products(product_ids)
@@ -60,30 +69,43 @@ class OrderService:
             # Validate order items quantities
             cls._validate_order_items(order_data.items, products)
 
+            # Считаем порядковый номер заказа этого клиента (1-based).
+            customer_order_index = (
+                Order.objects.filter(customer=customer).count() + 1
+            )
+
             # Create the order
             order = Order.objects.create(
                 customer=customer,
                 status=OrderStatusChoices.NEW,
+                delivery_type=order_data.delivery_type,
                 contact_email=order_data.contact_email,
                 contact_phone=order_data.contact_phone,
                 first_name=order_data.first_name,
                 last_name=order_data.last_name,
                 address=order_data.address,
+                latitude=order_data.latitude,
+                longitude=order_data.longitude,
                 notes=order_data.notes,
             )
 
+            # Генерируем уникальный номер вида NNNNN-X на основе глобального id заказа
+            # и порядкового номера заказа этого клиента.
+            order.order_number = (
+                f"{order.id:0{cls.ORDER_NUMBER_PAD}d}-{customer_order_index}"
+            )
+            order.save(update_fields=["order_number", "updated_at"])
+
             # Create order items with price snapshots
-            order_items = []
             for item_data in order_data.items:
                 product = products[item_data.product_id]
-                order_item = OrderItem.objects.create(
+                OrderItem.objects.create(
                     order=order,
                     product=product,
                     product_name=product.name,
                     quantity=item_data.quantity,
                     unit_price=product.price,  # Snapshot current price
                 )
-                order_items.append(order_item)
 
             # Refresh to load relations
             order.refresh_from_db()

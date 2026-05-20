@@ -13,6 +13,13 @@ class OrderStatusChoices(models.TextChoices):
     COMPLETED = "completed", "Выполнен"
 
 
+class DeliveryTypeChoices(models.TextChoices):
+    """Способ получения заказа."""
+
+    PICKUP = "pickup", "Самовывоз"
+    DELIVERY = "delivery", "Доставка"
+
+
 class Order(TimeStampedModel):
     """
     Order model representing a customer's order.
@@ -20,6 +27,19 @@ class Order(TimeStampedModel):
     Contains order status, customer contact information,
     and links to order items.
     """
+
+    # Уникальный номер заказа в формате NNNNN-X,
+    # где NNNNN — глобальный счётчик с ведущими нулями (по id заказа),
+    # X — порядковый номер заказа этого клиента.
+    # Заполняется в OrderService при создании; nullable, чтобы не блокировать
+    # фабрики и существующие данные.
+    order_number = models.CharField(
+        max_length=32,
+        unique=True,
+        null=True,
+        blank=True,
+        help_text="Уникальный номер заказа в формате NNNNN-X",
+    )
 
     # Owner/Customer relation
     customer = models.ForeignKey(
@@ -35,6 +55,14 @@ class Order(TimeStampedModel):
         choices=OrderStatusChoices.choices,
         default=OrderStatusChoices.NEW,
         help_text="Статус заказа: новый, в обработке, подтвержден, отменен, выполнен",
+    )
+
+    # Способ получения
+    delivery_type = models.CharField(
+        max_length=20,
+        choices=DeliveryTypeChoices.choices,
+        default=DeliveryTypeChoices.PICKUP,
+        help_text="Способ получения заказа: самовывоз или доставка",
     )
 
     # Контактная информация
@@ -58,7 +86,21 @@ class Order(TimeStampedModel):
     )
     address = models.TextField(
         blank=True,
-        help_text="Адрес доставки",
+        help_text="Адрес доставки (обязателен при delivery_type=delivery)",
+    )
+    latitude = models.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        null=True,
+        blank=True,
+        help_text="Широта точки доставки (обязательна при delivery_type=delivery)",
+    )
+    longitude = models.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        null=True,
+        blank=True,
+        help_text="Долгота точки доставки (обязательна при delivery_type=delivery)",
     )
 
     # Дополнительные примечания
@@ -75,11 +117,13 @@ class Order(TimeStampedModel):
         indexes = [
             models.Index(fields=["customer"]),
             models.Index(fields=["status"]),
+            models.Index(fields=["delivery_type"]),
             models.Index(fields=["created_at"]),
+            models.Index(fields=["order_number"]),
         ]
 
     def __str__(self) -> str:
-        return f"Order {self.pk} - {self.status}"
+        return f"Order {self.order_number or self.pk} - {self.status}"
 
     @property
     def total_amount(self) -> "decimal.Decimal":

@@ -2,9 +2,9 @@
 Admin configuration for orders app using Unfold.
 """
 
-from unfold.admin import ModelAdmin
 from django.contrib import admin
-from django.utils.translation import gettext_lazy as _
+from unfold.admin import ModelAdmin
+
 from apps.orders.models import Order, OrderItem
 
 
@@ -12,17 +12,41 @@ from apps.orders.models import Order, OrderItem
 class OrderAdmin(ModelAdmin):
     """Админ-панель для модели Order."""
 
-    list_display = ('id', 'customer', 'get_customer_email', 'status', 'total_amount_display', 'created_at')
-    list_filter = ('status', 'created_at')
-    search_fields = ('customer__email', 'contact_email', 'first_name', 'last_name', 'address')
+    list_display = (
+        'order_number',
+        'customer',
+        'get_customer_email',
+        'status',
+        'delivery_type',
+        'total_amount_display',
+        'created_at',
+    )
+    list_filter = ('status', 'delivery_type', 'created_at')
+    search_fields = (
+        'order_number',
+        'customer__email',
+        'contact_email',
+        'first_name',
+        'last_name',
+        'address',
+    )
     ordering = ('-created_at',)
-    readonly_fields = ('created_at', 'updated_at', 'total_amount_display')
+    readonly_fields = (
+        'order_number',
+        'created_at',
+        'updated_at',
+        'total_amount_display',
+    )
     fieldsets = (
         ('Информация о заказе', {
-            'fields': ('customer', 'status', 'notes')
+            'fields': ('order_number', 'customer', 'status', 'delivery_type', 'notes')
         }),
         ('Контактная информация', {
-            'fields': ('contact_email', 'contact_phone', 'first_name', 'last_name', 'address')
+            'fields': ('contact_email', 'contact_phone', 'first_name', 'last_name')
+        }),
+        ('Доставка', {
+            'fields': ('address', 'latitude', 'longitude'),
+            'description': 'Заполняется только при delivery_type=delivery.',
         }),
         ('Финансы', {
             'fields': ('total_amount_display',)

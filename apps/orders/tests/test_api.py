@@ -302,6 +302,87 @@ class TestCreateOrderEndpoint:
 
 
 @pytest.mark.django_db
+class TestOrderCheckoutFlow:
+    """E2E: оформление заказа с самовывозом/доставкой и номером заказа."""
+
+    def test_pickup_order_returns_order_number(
+        self, client, regular_customer, published_product_factory, auth_headers
+    ):
+        product = published_product_factory(name="Hammer", price=100.00)
+        order_data = {
+            "contact_email": "pickup@example.com",
+            "delivery_type": "pickup",
+            "items": [{"product_id": product.id, "quantity": 1}],
+        }
+
+        headers = auth_headers(regular_customer)
+        response = client.post("/v1/orders/", json=order_data, headers=headers)
+
+        assert response.status_code == 200, response.json()
+        data = response.json()
+        assert data["delivery_type"] == "pickup"
+        assert data["order_number"] is not None
+        assert data["order_number"].endswith("-1")
+        assert data["address"] == ""
+        assert data["latitude"] is None
+        assert data["longitude"] is None
+
+    def test_delivery_order_with_coords(
+        self, client, regular_customer, published_product_factory, auth_headers
+    ):
+        product = published_product_factory(name="Drill", price=250.00)
+        order_data = {
+            "contact_email": "deliv@example.com",
+            "delivery_type": "delivery",
+            "address": "ул. Тверская, 10",
+            "latitude": "55.762345",
+            "longitude": "37.609876",
+            "items": [{"product_id": product.id, "quantity": 1}],
+        }
+
+        headers = auth_headers(regular_customer)
+        response = client.post("/v1/orders/", json=order_data, headers=headers)
+
+        assert response.status_code == 200, response.json()
+        data = response.json()
+        assert data["delivery_type"] == "delivery"
+        assert data["address"] == "ул. Тверская, 10"
+        assert data["latitude"] == "55.762345"
+        assert data["longitude"] == "37.609876"
+
+    def test_delivery_without_address_rejected(
+        self, client, regular_customer, published_product_factory, auth_headers
+    ):
+        product = published_product_factory(name="Saw", price=80.00)
+        order_data = {
+            "contact_email": "x@example.com",
+            "delivery_type": "delivery",
+            "latitude": "55.7",
+            "longitude": "37.6",
+            "items": [{"product_id": product.id, "quantity": 1}],
+        }
+
+        headers = auth_headers(regular_customer)
+        response = client.post("/v1/orders/", json=order_data, headers=headers)
+        assert response.status_code == 422
+
+    def test_delivery_without_coords_rejected(
+        self, client, regular_customer, published_product_factory, auth_headers
+    ):
+        product = published_product_factory(name="Bolt", price=10.00)
+        order_data = {
+            "contact_email": "x@example.com",
+            "delivery_type": "delivery",
+            "address": "ул. Ленина, 1",
+            "items": [{"product_id": product.id, "quantity": 1}],
+        }
+
+        headers = auth_headers(regular_customer)
+        response = client.post("/v1/orders/", json=order_data, headers=headers)
+        assert response.status_code == 422
+
+
+@pytest.mark.django_db
 class TestOrderPriceSnapshot:
     """Tests for BE-026 Snapshot product price at order creation."""
 

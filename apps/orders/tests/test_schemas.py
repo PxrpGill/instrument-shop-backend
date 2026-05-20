@@ -8,7 +8,7 @@ from decimal import Decimal
 import pytest
 from pydantic import ValidationError
 
-from apps.orders.models import OrderStatusChoices
+from apps.orders.models import DeliveryTypeChoices, OrderStatusChoices
 from apps.orders.schemas import (
     OrderCreateSchema,
     OrderItemCreateSchema,
@@ -173,12 +173,16 @@ class TestOrderResponseSchema:
 
         class MockOrder:
             id = 1
+            order_number = "00001-1"
             status = OrderStatusChoices.PROCESSING
+            delivery_type = DeliveryTypeChoices.PICKUP
             contact_email = "test@example.com"
             contact_phone = "+1234567890"
             first_name = "John"
             last_name = "Doe"
             address = "123 Main St"
+            latitude = None
+            longitude = None
             notes = "Test notes"
             total_amount = Decimal("199.99")
             created_at = datetime(2024, 1, 15, 10, 30, 0)
@@ -221,12 +225,16 @@ class TestOrderResponseSchema:
 
         class MockOrder:
             id = 1
+            order_number = "00001-1"
             status = OrderStatusChoices.NEW
+            delivery_type = DeliveryTypeChoices.PICKUP
             contact_email = "test@example.com"
             contact_phone = ""
             first_name = ""
             last_name = ""
             address = ""
+            latitude = None
+            longitude = None
             notes = ""
             total_amount = Decimal("100.00")
             created_at = datetime.now()
@@ -253,7 +261,9 @@ class TestOrderListResponseSchema:
 
         class MockOrder:
             id = 1
+            order_number = "00001-1"
             status = OrderStatusChoices.CONFIRMED
+            delivery_type = DeliveryTypeChoices.PICKUP
             contact_email = "test@example.com"
             total_amount = Decimal("500.00")
             created_at = datetime.now()
@@ -362,12 +372,16 @@ class TestSchemaSerialization:
 
         class MockOrder:
             id = 1
+            order_number = "00001-1"
             status = OrderStatusChoices.NEW
+            delivery_type = DeliveryTypeChoices.PICKUP
             contact_email = "test@example.com"
             contact_phone = ""
             first_name = ""
             last_name = ""
             address = ""
+            latitude = None
+            longitude = None
             notes = ""
             total_amount = Decimal("199.98")
             created_at = datetime.now()
@@ -398,7 +412,9 @@ class TestSchemaSerialization:
 
         class MockOrder:
             id = 1
+            order_number = "00001-1"
             status = OrderStatusChoices.PROCESSING
+            delivery_type = DeliveryTypeChoices.PICKUP
             contact_email = "test@example.com"
             total_amount = Decimal("299.99")
             created_at = datetime.now()

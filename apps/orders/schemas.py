@@ -17,7 +17,7 @@ from pydantic import (
     model_validator,
 )
 
-from apps.orders.models import OrderStatusChoices
+from apps.orders.models import DeliveryTypeChoices, OrderStatusChoices
 
 
 def _serialize_decimal(value: Decimal) -> str:
@@ -36,6 +36,14 @@ DecimalField = Annotated[
 ]
 """Decimal field that serializes to string."""
 
+OptionalDecimalField = Annotated[
+    Optional[Decimal],
+    PlainSerializer(
+        lambda v: str(v) if v is not None else None, return_type=Optional[str]
+    ),
+]
+"""Optional Decimal field that serializes to string or None."""
+
 DatetimeField = Annotated[
     datetime,
     PlainSerializer(lambda v: v.isoformat() if v else None, return_type=Optional[str]),
@@ -53,6 +61,17 @@ OrderStatusField = Annotated[
     PlainSerializer(_serialize_order_status, return_type=str),
 ]
 """Order status field that serializes to string value."""
+
+
+def _serialize_delivery_type(value: DeliveryTypeChoices) -> str:
+    return value.value
+
+
+DeliveryTypeField = Annotated[
+    DeliveryTypeChoices,
+    PlainSerializer(_serialize_delivery_type, return_type=str),
+]
+"""Delivery type field that serializes to string value."""
 
 
 class OrderItemCreateSchema(BaseModel):
@@ -86,13 +105,51 @@ class OrderCreateSchema(BaseModel):
     last_name: str = Field(
         default="", max_length=100, description="Recipient last name"
     )
-    address: str = Field(default="", description="Delivery address")
+    delivery_type: DeliveryTypeChoices = Field(
+        default=DeliveryTypeChoices.PICKUP,
+        description="Способ получения: pickup (самовывоз) или delivery (доставка)",
+    )
+    address: str = Field(
+        default="",
+        description="Адрес доставки (обязателен для delivery_type=delivery)",
+    )
+    latitude: Optional[Decimal] = Field(
+        default=None,
+        ge=Decimal("-90"),
+        le=Decimal("90"),
+        description="Широта точки доставки (обязательна для delivery)",
+    )
+    longitude: Optional[Decimal] = Field(
+        default=None,
+        ge=Decimal("-180"),
+        le=Decimal("180"),
+        description="Долгота точки доставки (обязательна для delivery)",
+    )
     notes: str = Field(default="", description="Order notes")
     items: list[OrderItemCreateSchema] = Field(
         ...,
         min_length=1,
         description="List of order items (at least one required)",
     )
+
+    @model_validator(mode="after")
+    def _validate_delivery_fields(self) -> "OrderCreateSchema":
+        """Для delivery — обязательны адрес и координаты; для pickup — должны быть пустыми."""
+        if self.delivery_type == DeliveryTypeChoices.DELIVERY:
+            if not self.address.strip():
+                raise ValueError("Адрес обязателен при доставке")
+            if self.latitude is None or self.longitude is None:
+                raise ValueError("Координаты (latitude и longitude) обязательны при доставке")
+        else:  # PICKUP
+            # Очищаем поля доставки, чтобы не сохранять мусор
+            if self.address or self.latitude is not None or self.longitude is not None:
+                # Не валим запрос — просто игнорируем переданные поля доставки.
+                # Очистка делается через model_copy в __init__/use, здесь оставим как есть,
+                # сервис всё равно сохранит то, что пришло. Чтобы быть строгими — обнулим.
+                object.__setattr__(self, "address", "")
+                object.__setattr__(self, "latitude", None)
+                object.__setattr__(self, "longitude", None)
+        return self
 
 
 class OrderResponseSchema(BaseModel):
@@ -101,12 +158,16 @@ class OrderResponseSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    order_number: Optional[str] = None
     status: OrderStatusField
+    delivery_type: DeliveryTypeField
     contact_email: EmailStr
     contact_phone: str
     first_name: str
     last_name: str
     address: str
+    latitude: OptionalDecimalField = None
+    longitude: OptionalDecimalField = None
     notes: str
     total_amount: DecimalField
     items: list[OrderItemResponseSchema]
@@ -136,7 +197,9 @@ class OrderListResponseSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    order_number: Optional[str] = None
     status: OrderStatusField
+    delivery_type: DeliveryTypeField
     contact_email: EmailStr
     total_amount: DecimalField
     items_count: int
