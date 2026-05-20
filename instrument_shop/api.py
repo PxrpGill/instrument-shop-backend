@@ -1,5 +1,6 @@
 from ninja import NinjaAPI
 
+from apps.news.controllers import router as news_router
 from apps.orders.controllers import router as orders_router
 from apps.pages.controllers import router as pages_router
 from apps.products.catalog_controllers import router as catalog_router
@@ -36,6 +37,9 @@ api.add_router("/catalog", catalog_router)
 
 # Pages (public content) — см. contracts/pages/*
 api.add_router("/pages/", pages_router)
+
+# News (public) — см. contracts/news/*
+api.add_router("/news", news_router)
 
 
 @api.get("/hello")

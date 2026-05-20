@@ -68,6 +68,7 @@ INSTALLED_APPS = [
     "apps.orders",
     "apps.reviews",
     "apps.pages",
+    "apps.news",
 ]
 
 MIDDLEWARE = [
