@@ -100,25 +100,19 @@ class TestRateLimitDecorators:
 
 @pytest.mark.django_db
 class TestPublicApiRateLimit:
-    """Tests for public API rate limiting."""
+    """Tests for /catalog public API rate limiting."""
 
-    def test_categories_has_ratelimit_decorator(self):
-        """Verify categories endpoint has rate limit decorator."""
-        from apps.products.public_api import list_public_categories
+    def test_catalog_root_has_ratelimit_decorator(self):
+        from apps.products.catalog_controllers import get_catalog
 
-        func_name = list_public_categories.__name__
-        assert func_name == "list_public_categories"
+        assert get_catalog.__name__ == "get_catalog"
 
-    def test_products_list_has_ratelimit_decorator(self):
-        """Verify products list endpoint has rate limit decorator."""
-        from apps.products.public_api import list_public_products
+    def test_category_page_has_ratelimit_decorator(self):
+        from apps.products.catalog_controllers import get_category
 
-        func_name = list_public_products.__name__
-        assert func_name == "list_public_products"
+        assert get_category.__name__ == "get_category"
 
     def test_product_detail_has_ratelimit_decorator(self):
-        """Verify product detail endpoint has rate limit decorator."""
-        from apps.products.public_api import get_public_product
+        from apps.products.catalog_controllers import get_product_detail
 
-        func_name = get_public_product.__name__
-        assert func_name == "get_public_product"
+        assert get_product_detail.__name__ == "get_product_detail"

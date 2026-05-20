@@ -1,66 +1,57 @@
+"""Схемы внутреннего admin API товаров.
+
+Публичные схемы каталога живут в `apps/products/catalog_schemas.py` и
+соответствуют контракту `contracts/catalog/*` + `contracts/shared/product`.
+"""
+
 from typing import Optional
 
 from ninja import ModelSchema
 
-from .models import (
-    Category,
-    Product,
-    ProductAvailabilityChoices,
-    ProductImage,
-    ProductStatusChoices,
-)
+from .models import Category, Product, ProductImage
 
 
 class CategorySchema(ModelSchema):
-    """Schema for Category output."""
+    """Схема Category для admin API."""
 
     class Meta:
         model = Category
-        fields = ["id", "slug", "name", "image", "created_at", "updated_at"]
+        fields = ["id", "slug", "name", "poster", "created_at", "updated_at"]
 
 
 class CategoryCreateSchema(ModelSchema):
-    """Schema for Category creation."""
+    """Схема создания/обновления Category."""
 
     class Meta:
         model = Category
-        fields = ["name", "image"]
-
-
-class PublicCategorySchema(ModelSchema):
-    """Public schema for Category (storefront only)."""
-
-    class Meta:
-        model = Category
-        fields = ["id", "name", "slug"]
-
-
-class PublicProductImageSchema(ModelSchema):
-    """Public schema for ProductImage (storefront only)."""
-
-    class Meta:
-        model = ProductImage
-        fields = ["id", "image", "alt_text", "is_primary"]
+        fields = ["name", "poster"]
 
 
 class ProductImageSchema(ModelSchema):
-    """Schema for ProductImage output."""
+    """Схема ProductImage для admin API."""
 
     class Meta:
         model = ProductImage
-        fields = ["id", "image", "alt_text", "is_primary", "created_at", "updated_at"]
+        fields = [
+            "id",
+            "image",
+            "is_primary",
+            "order",
+            "created_at",
+            "updated_at",
+        ]
 
 
 class ProductImageCreateSchema(ModelSchema):
-    """Schema for ProductImage creation."""
+    """Схема привязки изображения к товару."""
 
     class Meta:
         model = ProductImage
-        fields = ["image", "alt_text", "is_primary"]
+        fields = ["image", "is_primary", "order"]
 
 
 class ProductSchema(ModelSchema):
-    """Schema for Product output."""
+    """Схема Product для admin API."""
 
     categories: Optional[list[CategorySchema]] = []
     images: Optional[list[ProductImageSchema]] = []
@@ -72,6 +63,8 @@ class ProductSchema(ModelSchema):
             "name",
             "description",
             "parameters",
+            "description_parameters",
+            "technical_specifications",
             "price",
             "sku",
             "brand",
@@ -84,7 +77,7 @@ class ProductSchema(ModelSchema):
 
 
 class ProductCreateSchema(ModelSchema):
-    """Schema for Product creation. Status is always set to draft."""
+    """Схема создания товара. status всегда выставляется в draft на бэке."""
 
     category_ids: Optional[list[int]] = []
 
@@ -94,6 +87,8 @@ class ProductCreateSchema(ModelSchema):
             "name",
             "description",
             "parameters",
+            "description_parameters",
+            "technical_specifications",
             "price",
             "sku",
             "brand",
@@ -102,7 +97,7 @@ class ProductCreateSchema(ModelSchema):
 
 
 class ProductUpdateSchema(ModelSchema):
-    """Schema for Product update. Status cannot be changed directly."""
+    """Схема обновления товара. status меняется только через /publish."""
 
     class Meta:
         model = Product
@@ -110,45 +105,10 @@ class ProductUpdateSchema(ModelSchema):
             "name",
             "description",
             "parameters",
+            "description_parameters",
+            "technical_specifications",
             "price",
             "sku",
             "brand",
             "availability",
-        ]
-
-
-class PublicProductSchema(ModelSchema):
-    """Public schema for Product (storefront only)."""
-
-    categories: Optional[list[PublicCategorySchema]] = []
-    images: Optional[list[PublicProductImageSchema]] = []
-
-    class Meta:
-        model = Product
-        fields = [
-            "id",
-            "name",
-            "description",
-            "price",
-            "brand",
-            "availability",
-            "categories",
-            "created_at",
-        ]
-
-
-class PublicProductListSchema(ModelSchema):
-    """Public schema for Product list (minimal data, no images for list view)."""
-
-    categories: Optional[list[PublicCategorySchema]] = []
-
-    class Meta:
-        model = Product
-        fields = [
-            "id",
-            "name",
-            "price",
-            "brand",
-            "availability",
-            "categories",
         ]

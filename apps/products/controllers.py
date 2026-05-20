@@ -10,15 +10,9 @@ from apps.users.constants import Permission
 from core.auth.permissions import HasPermission, HasRoleMixin, IsAuthenticated
 
 from .models import Category, Product, ProductImage, ProductStatusChoices
-from .schemas import (
-    CategoryCreateSchema,
-    CategorySchema,
-    ProductCreateSchema,
-    ProductImageCreateSchema,
-    ProductImageSchema,
-    ProductSchema,
-    ProductUpdateSchema,
-)
+from .schemas import (CategoryCreateSchema, CategorySchema,
+                      ProductCreateSchema, ProductImageCreateSchema,
+                      ProductImageSchema, ProductSchema, ProductUpdateSchema)
 from .services import ProductPublicationError, ProductPublicationService
 
 # =============================================================================

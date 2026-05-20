@@ -1,24 +1,27 @@
 """
 Pytest configuration and shared fixtures.
 """
+
 import os
 import sys
+
 import pytest
 from django.conf import settings
 
 # Configure Django settings for tests
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'instrument_shop.settings')
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "instrument_shop.settings")
 
 import django
+
 django.setup()
 
 from ninja.testing import TestClient
-from instrument_shop.api import api
 
-from apps.users.models import Customer, Role, CustomerRole
 from apps.users.constants import RoleName
-from apps.users.services.role_service import RoleService
+from apps.users.models import Customer, CustomerRole, Role
 from apps.users.services.customer_service import CustomerService
+from apps.users.services.role_service import RoleService
+from instrument_shop.api import api
 
 
 @pytest.fixture
@@ -30,6 +33,7 @@ def client():
 @pytest.fixture
 def customer_factory():
     """Fixture factory to create test customers."""
+
     def create_customer(
         email: str = "test@example.com",
         password: str = "testpass123",
@@ -45,12 +49,14 @@ def customer_factory():
             last_name=last_name,
             phone=phone,
         )
+
     return create_customer
 
 
 @pytest.fixture
 def role_factory():
     """Fixture factory to create test roles."""
+
     def create_role(
         name: str = "test_role",
         description: str = "Test role",
@@ -63,6 +69,7 @@ def role_factory():
             description=description,
             permissions=permissions,
         )
+
     return create_role
 
 
@@ -85,7 +92,7 @@ def manager_customer(customer_factory):
 @pytest.fixture
 def regular_customer(customer_factory):
     """Create a regular customer.
-    
+
     Note: The customer role should have create_order permission via migration 0006.
     If this test fails with 403, check that the migration was applied.
     """
@@ -98,9 +105,10 @@ def regular_customer(customer_factory):
 def category_factory():
     """Fixture factory to create test categories."""
     from apps.products.models import Category
-    
+
     def create_category(name: str = "Test Category") -> Category:
         return Category.objects.create(name=name)
+
     return create_category
 
 
@@ -108,19 +116,15 @@ def category_factory():
 def product_factory():
     """Fixture factory to create test products."""
     from apps.products.models import Product
-    
+
     def create_product(
         name: str = "Test Product",
         price: float = 100.0,
         status: str = "draft",
-        **kwargs
+        **kwargs,
     ) -> Product:
-        return Product.objects.create(
-            name=name,
-            price=price,
-            status=status,
-            **kwargs
-        )
+        return Product.objects.create(name=name, price=price, status=status, **kwargs)
+
     return create_product
 
 
@@ -132,4 +136,41 @@ def auth_headers():
     def _get_headers(customer):
         tokens = CustomerService.generate_tokens(customer)
         return {"Authorization": f"Bearer {tokens['access_token']}"}
+
     return _get_headers
+
+
+@pytest.fixture
+def image_factory():
+    """Создаёт shared.Image с заглушечным source_desktop путём (без реальной загрузки файла)."""
+    from apps.shared.models import Image
+
+    counter = {"n": 0}
+
+    def _factory(name: str = None) -> Image:
+        counter["n"] += 1
+        filename = name or f"img-{counter['n']}.jpg"
+        image = Image(alt_text=filename)
+        image.source_desktop.name = f"images/source/desktop/{filename}"
+        image.save()
+        return image
+
+    return _factory
+
+
+@pytest.fixture
+def product_image_factory(image_factory):
+    """Создаёт ProductImage, привязывая к товару новый shared.Image."""
+    from apps.products.models import ProductImage
+
+    def _factory(
+        product, *, is_primary: bool = False, order: int = 0, alt_text: str = None
+    ):
+        return ProductImage.objects.create(
+            product=product,
+            image=image_factory(alt_text or "img.jpg"),
+            is_primary=is_primary,
+            order=order,
+        )
+
+    return _factory

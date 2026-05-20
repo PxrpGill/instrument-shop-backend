@@ -6,38 +6,38 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('products', '0007_alter_category_options_alter_product_options_and_more'),
+        ("products", "0007_alter_category_options_alter_product_options_and_more"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='category',
-            name='created_at',
-            field=models.DateTimeField(auto_now_add=True, verbose_name='Создано'),
+            model_name="category",
+            name="created_at",
+            field=models.DateTimeField(auto_now_add=True, verbose_name="Создано"),
         ),
         migrations.AlterField(
-            model_name='category',
-            name='updated_at',
-            field=models.DateTimeField(auto_now=True, verbose_name='Обновлено'),
+            model_name="category",
+            name="updated_at",
+            field=models.DateTimeField(auto_now=True, verbose_name="Обновлено"),
         ),
         migrations.AlterField(
-            model_name='product',
-            name='created_at',
-            field=models.DateTimeField(auto_now_add=True, verbose_name='Создано'),
+            model_name="product",
+            name="created_at",
+            field=models.DateTimeField(auto_now_add=True, verbose_name="Создано"),
         ),
         migrations.AlterField(
-            model_name='product',
-            name='updated_at',
-            field=models.DateTimeField(auto_now=True, verbose_name='Обновлено'),
+            model_name="product",
+            name="updated_at",
+            field=models.DateTimeField(auto_now=True, verbose_name="Обновлено"),
         ),
         migrations.AlterField(
-            model_name='productimage',
-            name='created_at',
-            field=models.DateTimeField(auto_now_add=True, verbose_name='Создано'),
+            model_name="productimage",
+            name="created_at",
+            field=models.DateTimeField(auto_now_add=True, verbose_name="Создано"),
         ),
         migrations.AlterField(
-            model_name='productimage',
-            name='updated_at',
-            field=models.DateTimeField(auto_now=True, verbose_name='Обновлено'),
+            model_name="productimage",
+            name="updated_at",
+            field=models.DateTimeField(auto_now=True, verbose_name="Обновлено"),
         ),
     ]

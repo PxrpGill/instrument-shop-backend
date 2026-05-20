@@ -2,9 +2,9 @@ from ninja import NinjaAPI
 
 from apps.orders.controllers import router as orders_router
 from apps.pages.controllers import router as pages_router
+from apps.products.catalog_controllers import router as catalog_router
 from apps.products.controllers import categories_router, images_router
 from apps.products.controllers import router as products_router
-from apps.products.public_api import public_router
 from apps.shared.exception_handlers import register_error_handlers
 from apps.users.api.auth_controllers import router as auth_router
 from apps.users.api.role_controllers import router as admin_router
@@ -31,8 +31,8 @@ api.add_router("/v1/products/", images_router)
 # Orders
 api.add_router("/v1/orders/", orders_router)
 
-# Public storefront endpoints (no auth required)
-api.add_router("/v1/public/", public_router)
+# Public storefront catalog (contracts/catalog/*)
+api.add_router("/catalog", catalog_router)
 
 # Pages (public content)
 api.add_router("/v1/public/", pages_router)
