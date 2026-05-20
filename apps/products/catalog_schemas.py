@@ -14,6 +14,7 @@ from __future__ import annotations
 from typing import List, Literal, Optional
 
 from ninja import Schema
+from pydantic import ConfigDict
 
 from apps.shared.schemas import PaginationMeta, PictureSchema, SiteLink
 
@@ -59,6 +60,21 @@ class DescriptionParametersGroup(Schema):
 class ProductListItem(Schema):
     """Карточка товара в листинге (без gallery / detail-полей)."""
 
+    model_config = ConfigDict(json_schema_extra={"example": {
+        "id": 42,
+        "title": "Перфоратор Bosch GBH 2-28",
+        "description": "Мощный перфоратор для профессиональных работ, 880 Вт",
+        "sku": "BOSCH-GBH228",
+        "price": 12500,
+        "category": [{"title": "Перфораторы", "slug": "perforatory"}],
+        "status": {"slugStatus": "inStock", "title": "В наличии"},
+        "poster": {
+            "original": {"src": "/media/products/bosch-gbh228.jpg", "mobile": None},
+            "webp": {"src": "/media/products/bosch-gbh228.webp", "mobile": None},
+            "avif": None,
+        },
+    }})
+
     id: int
     title: str
     description: str
@@ -71,6 +87,29 @@ class ProductListItem(Schema):
 
 class ProductDetail(Schema):
     """Полная карточка товара на странице товара."""
+
+    model_config = ConfigDict(json_schema_extra={"example": {
+        "id": 42,
+        "title": "Перфоратор Bosch GBH 2-28",
+        "description": "Мощный перфоратор для профессиональных работ, 880 Вт",
+        "sku": "BOSCH-GBH228",
+        "price": 12500,
+        "status": {"slugStatus": "inStock", "title": "В наличии"},
+        "category": [{"title": "Перфораторы", "slug": "perforatory"}],
+        "gallery": [
+            {"original": {"src": "/media/products/bosch-gbh228-1.jpg", "mobile": None}, "webp": None, "avif": None},
+            {"original": {"src": "/media/products/bosch-gbh228-2.jpg", "mobile": None}, "webp": None, "avif": None},
+        ],
+        "descriptionParameters": [
+            {"title": "Технические характеристики", "parameters": "<p>Мощность: 880 Вт</p>"}
+        ],
+        "techicalSpecifications": [
+            {"title": "Общие", "specifications": [
+                {"label": "Мощность", "value": "880 Вт"},
+                {"label": "Масса", "value": "2.9 кг"},
+            ]}
+        ],
+    }})
 
     id: int
     title: str
@@ -137,6 +176,38 @@ class ShowcaseBlock(Schema):
 class CatalogResponse(Schema):
     """GET /catalog — главная каталога."""
 
+    model_config = ConfigDict(json_schema_extra={"example": {
+        "categories_block": {
+            "title": "Категории",
+            "categories": [
+                {"title": "Перфораторы", "slug": "perforatory"},
+                {"title": "Дрели", "slug": "dreli"},
+                {"title": "Шуруповёрты", "slug": "shurupoverty"},
+            ],
+        },
+        "filter_block": {
+            "price_filter": {"start_range": 1000, "end_range": 50000},
+            "categories_filter": {
+                "categories": [
+                    {"title": "Перфораторы", "slug": "perforatory"},
+                    {"title": "Дрели", "slug": "dreli"},
+                ]
+            },
+        },
+        "products_block": {
+            "title": "Все товары",
+            "products": [
+                {
+                    "id": 42, "title": "Перфоратор Bosch GBH 2-28", "description": "880 Вт",
+                    "sku": "BOSCH-GBH228", "price": 12500,
+                    "category": [{"title": "Перфораторы", "slug": "perforatory"}],
+                    "status": {"slugStatus": "inStock", "title": "В наличии"}, "poster": None,
+                }
+            ],
+            "meta": {"page": 1, "per_page": 12, "total_pages": 5, "total_items": 58},
+        },
+    }})
+
     categories_block: CategoriesBlock
     filter_block: CatalogFilterBlock
     products_block: ProductsBlock
@@ -145,6 +216,25 @@ class CatalogResponse(Schema):
 class CategoryResponse(Schema):
     """GET /catalog/categories/{slug} — страница категории."""
 
+    model_config = ConfigDict(json_schema_extra={"example": {
+        "category": {"title": "Перфораторы", "slug": "perforatory"},
+        "filter_block": {
+            "price_filter": {"start_range": 2000, "end_range": 45000},
+        },
+        "products_block": {
+            "title": "Перфораторы",
+            "products": [
+                {
+                    "id": 42, "title": "Перфоратор Bosch GBH 2-28", "description": "880 Вт",
+                    "sku": "BOSCH-GBH228", "price": 12500,
+                    "category": [{"title": "Перфораторы", "slug": "perforatory"}],
+                    "status": {"slugStatus": "inStock", "title": "В наличии"}, "poster": None,
+                }
+            ],
+            "meta": {"page": 1, "per_page": 12, "total_pages": 2, "total_items": 18},
+        },
+    }})
+
     category: ProductCategory
     filter_block: CategoryFilterBlock
     products_block: ProductsBlock
@@ -152,6 +242,36 @@ class CategoryResponse(Schema):
 
 class ProductDetailResponse(Schema):
     """GET /catalog/products/{id} — карточка товара."""
+
+    model_config = ConfigDict(json_schema_extra={"example": {
+        "product": {
+            "id": 42, "title": "Перфоратор Bosch GBH 2-28",
+            "description": "Мощный перфоратор для профессиональных работ, 880 Вт",
+            "sku": "BOSCH-GBH228", "price": 12500,
+            "status": {"slugStatus": "inStock", "title": "В наличии"},
+            "category": [{"title": "Перфораторы", "slug": "perforatory"}],
+            "gallery": [{"original": {"src": "/media/products/bosch-gbh228-1.jpg", "mobile": None}, "webp": None, "avif": None}],
+            "descriptionParameters": None,
+            "techicalSpecifications": [
+                {"title": "Общие", "specifications": [{"label": "Мощность", "value": "880 Вт"}]}
+            ],
+        },
+        "showcase": {
+            "title": "Похожие товары",
+            "button": {"title": "Все перфораторы", "href": "/catalog/perforatory"},
+            "showcases": [
+                {
+                    "title": "Популярные",
+                    "products": [
+                        {"id": 43, "title": "Перфоратор Makita HR2470", "description": "780 Вт",
+                         "sku": "MAK-HR2470", "price": 9900,
+                         "category": [{"title": "Перфораторы", "slug": "perforatory"}],
+                         "status": {"slugStatus": "inStock", "title": "В наличии"}, "poster": None}
+                    ],
+                }
+            ],
+        },
+    }})
 
     product: ProductDetail
     showcase: Optional[ShowcaseBlock] = None

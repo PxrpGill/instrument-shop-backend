@@ -8,7 +8,7 @@ from datetime import datetime
 from typing import Optional
 
 from ninja import Schema
-from pydantic import EmailStr, Field
+from pydantic import ConfigDict, EmailStr, Field
 
 
 # ============================================================================
@@ -54,6 +54,13 @@ class ResetPasswordRequest(Schema):
 class UserSchema(Schema):
     """contract: /api/auth/me и user в register/login."""
 
+    model_config = ConfigDict(json_schema_extra={"example": {
+        "id": "550e8400-e29b-41d4-a716-446655440000",
+        "username": "ivan_petrov",
+        "email": "ivan@example.ru",
+        "created_at": "2024-09-15T10:30:00Z",
+    }})
+
     id: str
     username: str
     email: str
@@ -62,6 +69,13 @@ class UserSchema(Schema):
 
 class TokenPair(Schema):
     """Базовая часть ответа auth: access + refresh + meta."""
+
+    model_config = ConfigDict(json_schema_extra={"example": {
+        "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiNTUwZTg0MDAiLCJleHAiOjE3MDAwMDAwMDB9.abc123",
+        "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiNTUwZTg0MDAiLCJ0eXBlIjoicmVmcmVzaCJ9.xyz789",
+        "token_type": "bearer",
+        "expires_in": 3600,
+    }})
 
     access_token: str
     refresh_token: str
@@ -72,8 +86,25 @@ class TokenPair(Schema):
 class AuthResponse(TokenPair):
     """register/login: TokenPair + user."""
 
+    model_config = ConfigDict(json_schema_extra={"example": {
+        "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiNTUwZTg0MDAiLCJleHAiOjE3MDAwMDAwMDB9.abc123",
+        "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiNTUwZTg0MDAiLCJ0eXBlIjoicmVmcmVzaCJ9.xyz789",
+        "token_type": "bearer",
+        "expires_in": 3600,
+        "user": {
+            "id": "550e8400-e29b-41d4-a716-446655440000",
+            "username": "ivan_petrov",
+            "email": "ivan@example.ru",
+            "created_at": "2024-09-15T10:30:00Z",
+        },
+    }})
+
     user: UserSchema
 
 
 class MessageResponse(Schema):
+    model_config = ConfigDict(json_schema_extra={"example": {
+        "message": "Письмо для сброса пароля отправлено на указанный email.",
+    }})
+
     message: str
