@@ -17,13 +17,13 @@
         </div>
 
         <!-- KPI Cards Row -->
-        <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             <!-- Total Orders -->
             <div class="bg-white dark:bg-base-800 rounded-lg shadow p-4">
                 <div class="text-sm text-gray-500 dark:text-gray-400">Всего заказов</div>
                 <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ total_orders }}</div>
             </div>
-            
+
             <!-- New Orders (action required) -->
             <div class="bg-white dark:bg-base-800 rounded-lg shadow p-4 border-l-4 border-yellow-500">
                 <div class="text-sm text-gray-500 dark:text-gray-400">Новые заказы</div>
@@ -32,21 +32,30 @@
                     <div class="text-xs text-yellow-600 mt-1">Требуют обработки</div>
                 {% endif %}
             </div>
-            
+
+            <!-- Unprocessed Feedback (action required) -->
+            <div class="bg-white dark:bg-base-800 rounded-lg shadow p-4 border-l-4 {% if feedback_unprocessed > 0 %}border-red-500{% else %}border-green-500{% endif %}">
+                <div class="text-sm text-gray-500 dark:text-gray-400">Обращения</div>
+                <div class="text-2xl font-bold {% if feedback_unprocessed > 0 %}text-red-600{% else %}text-green-600{% endif %}">{{ feedback_unprocessed }}</div>
+                <div class="text-xs {% if feedback_unprocessed > 0 %}text-red-600{% else %}text-gray-500{% endif %} mt-1">
+                    {% if feedback_unprocessed > 0 %}Не обработано{% else %}Все обработаны{% endif %}
+                </div>
+            </div>
+
             <!-- Total Revenue -->
             <div class="bg-white dark:bg-base-800 rounded-lg shadow p-4">
                 <div class="text-sm text-gray-500 dark:text-gray-400">Общая выручка</div>
                 <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ total_revenue|floatformat:2 }} ₽</div>
-                <div class="text-xs text-gray-500 mt-1">Подтвержденные и выполненные</div>
+                <div class="text-xs text-gray-500 mt-1">Средний чек: {{ aov|floatformat:2 }} ₽</div>
             </div>
-            
+
             <!-- Total Customers -->
             <div class="bg-white dark:bg-base-800 rounded-lg shadow p-4">
                 <div class="text-sm text-gray-500 dark:text-gray-400">Активные клиенты</div>
                 <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ total_customers }}</div>
-                <div class="text-xs text-gray-500 mt-1">+{{ new_customers_week }} за неделю</div>
+                <div class="text-xs text-gray-500 mt-1">+{{ new_customers_week }} за 7 дней</div>
             </div>
-            
+
             <!-- Published Products -->
             <div class="bg-white dark:bg-base-800 rounded-lg shadow p-4">
                 <div class="text-sm text-gray-500 dark:text-gray-400">Товары в каталоге</div>
@@ -312,6 +321,205 @@
             </div>
         </div>
         
+        <!-- Feedback awaiting processing -->
+        <div class="bg-white dark:bg-base-800 rounded-lg shadow">
+            <div class="p-4 border-b dark:border-base-700 flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                    Необработанные обращения
+                    {% if feedback_unprocessed > 0 %}
+                        <span class="ml-2 px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">
+                            {{ feedback_unprocessed }}
+                        </span>
+                    {% endif %}
+                </h3>
+                <a href="/admin/feedback/feedbackmessage/" class="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400">Все обращения →</a>
+            </div>
+            <div class="p-4">
+                {% if recent_feedback %}
+                    <table class="w-full">
+                        <thead>
+                            <tr class="border-b dark:border-base-700">
+                                <th class="text-left py-2 text-sm font-medium text-gray-600 dark:text-gray-400">Имя</th>
+                                <th class="text-left py-2 text-sm font-medium text-gray-600 dark:text-gray-400">Email</th>
+                                <th class="text-left py-2 text-sm font-medium text-gray-600 dark:text-gray-400">Телефон</th>
+                                <th class="text-left py-2 text-sm font-medium text-gray-600 dark:text-gray-400">Создано</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for msg in recent_feedback %}
+                                <tr class="border-b dark:border-base-700 hover:bg-gray-50 dark:hover:bg-base-700">
+                                    <td class="py-2">
+                                        <a href="/admin/feedback/feedbackmessage/{{ msg.pk }}/change/"
+                                           class="text-blue-600 hover:text-blue-800 dark:text-blue-400">
+                                            {{ msg.full_name }}
+                                        </a>
+                                    </td>
+                                    <td class="py-2 text-sm text-gray-900 dark:text-white">{{ msg.email }}</td>
+                                    <td class="py-2 text-sm text-gray-600 dark:text-gray-400">{{ msg.phone|default:"—" }}</td>
+                                    <td class="py-2 text-sm text-gray-600 dark:text-gray-400">{{ msg.created_at|date:"d.m.Y H:i" }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <p class="text-gray-500 dark:text-gray-400">Все обращения обработаны</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Business Analytics Row: Top products & Top favorites -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Top selling products -->
+            <div class="bg-white dark:bg-base-800 rounded-lg shadow">
+                <div class="p-4 border-b dark:border-base-700">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Топ-10 товаров по выручке</h3>
+                </div>
+                <div class="p-4">
+                    {% if top_products %}
+                        <table class="w-full">
+                            <thead>
+                                <tr class="border-b dark:border-base-700">
+                                    <th class="text-left py-2 text-sm font-medium text-gray-600 dark:text-gray-400">Товар</th>
+                                    <th class="text-right py-2 text-sm font-medium text-gray-600 dark:text-gray-400">Продано</th>
+                                    <th class="text-right py-2 text-sm font-medium text-gray-600 dark:text-gray-400">Выручка</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in top_products %}
+                                    <tr class="border-b dark:border-base-700 hover:bg-gray-50 dark:hover:bg-base-700">
+                                        <td class="py-2 text-sm">
+                                            <a href="/admin/products/product/{{ item.product_id }}/change/"
+                                               class="text-blue-600 hover:text-blue-800 dark:text-blue-400">
+                                                {{ item.product_name }}
+                                            </a>
+                                        </td>
+                                        <td class="py-2 text-sm text-right text-gray-600 dark:text-gray-400">{{ item.sold_qty }} шт.</td>
+                                        <td class="py-2 text-sm text-right font-semibold text-gray-900 dark:text-white">{{ item.revenue|floatformat:2 }} ₽</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    {% else %}
+                        <p class="text-gray-500 dark:text-gray-400">Пока нет оплаченных заказов</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Top favorited products -->
+            <div class="bg-white dark:bg-base-800 rounded-lg shadow">
+                <div class="p-4 border-b dark:border-base-700 flex items-center justify-between">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Топ-5 в избранном</h3>
+                    <span class="text-xs text-gray-500 dark:text-gray-400">Всего добавлений: {{ favorites_total }}</span>
+                </div>
+                <div class="p-4">
+                    {% if top_favorited %}
+                        <table class="w-full">
+                            <thead>
+                                <tr class="border-b dark:border-base-700">
+                                    <th class="text-left py-2 text-sm font-medium text-gray-600 dark:text-gray-400">Товар</th>
+                                    <th class="text-right py-2 text-sm font-medium text-gray-600 dark:text-gray-400">Добавлений</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for product in top_favorited %}
+                                    <tr class="border-b dark:border-base-700 hover:bg-gray-50 dark:hover:bg-base-700">
+                                        <td class="py-2 text-sm">
+                                            <a href="/admin/products/product/{{ product.pk }}/change/"
+                                               class="text-blue-600 hover:text-blue-800 dark:text-blue-400">
+                                                {{ product.name }}
+                                            </a>
+                                        </td>
+                                        <td class="py-2 text-sm text-right font-semibold text-gray-900 dark:text-white">{{ product.fav_count }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    {% else %}
+                        <p class="text-gray-500 dark:text-gray-400">Пока никто не добавил товары в избранное</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Content Analytics: News & Reviews -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- News stats -->
+            <div class="bg-white dark:bg-base-800 rounded-lg shadow">
+                <div class="p-4 border-b dark:border-base-700 flex items-center justify-between">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Новости</h3>
+                    <a href="/admin/news/newsarticle/" class="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400">Все →</a>
+                </div>
+                <div class="p-4">
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div class="p-3 bg-gray-50 dark:bg-base-700 rounded">
+                            <div class="text-sm text-gray-500 dark:text-gray-400">Опубликовано</div>
+                            <div class="text-xl font-bold text-green-600">{{ news_published }}</div>
+                        </div>
+                        <div class="p-3 bg-gray-50 dark:bg-base-700 rounded">
+                            <div class="text-sm text-gray-500 dark:text-gray-400">Черновики</div>
+                            <div class="text-xl font-bold text-gray-700 dark:text-gray-300">{{ news_drafts }}</div>
+                        </div>
+                    </div>
+                    {% if recent_news %}
+                        <div class="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Последние публикации</div>
+                        <ul class="space-y-2">
+                            {% for article in recent_news %}
+                                <li class="flex justify-between items-center py-1 border-b dark:border-base-700">
+                                    <a href="/admin/news/newsarticle/{{ article.pk }}/change/"
+                                       class="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 truncate pr-2">
+                                        {{ article.title }}
+                                    </a>
+                                    <span class="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{{ article.date|date:"d.m.Y" }}</span>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-gray-500 dark:text-gray-400">Опубликованных новостей пока нет</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Reviews stats -->
+            <div class="bg-white dark:bg-base-800 rounded-lg shadow">
+                <div class="p-4 border-b dark:border-base-700 flex items-center justify-between">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Отзывы</h3>
+                    <a href="/admin/reviews/review/" class="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400">Все →</a>
+                </div>
+                <div class="p-4">
+                    <div class="grid grid-cols-3 gap-3 mb-4">
+                        <div class="p-3 bg-gray-50 dark:bg-base-700 rounded">
+                            <div class="text-xs text-gray-500 dark:text-gray-400">Опубликовано</div>
+                            <div class="text-xl font-bold text-green-600">{{ reviews_published }}</div>
+                        </div>
+                        <div class="p-3 bg-gray-50 dark:bg-base-700 rounded">
+                            <div class="text-xs text-gray-500 dark:text-gray-400">Скрыто</div>
+                            <div class="text-xl font-bold text-gray-700 dark:text-gray-300">{{ reviews_hidden }}</div>
+                        </div>
+                        <div class="p-3 bg-gray-50 dark:bg-base-700 rounded">
+                            <div class="text-xs text-gray-500 dark:text-gray-400">Средняя оценка</div>
+                            <div class="text-xl font-bold text-yellow-600">{{ reviews_avg_grade|floatformat:2 }}</div>
+                        </div>
+                    </div>
+                    {% if reviews_published > 0 %}
+                        <div class="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Распределение оценок</div>
+                        <div class="space-y-1">
+                            {% for row in reviews_by_grade %}
+                                <div class="flex items-center gap-2">
+                                    <span class="text-sm text-gray-700 dark:text-gray-300 w-6">{{ row.grade }}★</span>
+                                    <div class="flex-1 bg-gray-200 dark:bg-base-700 rounded-full h-2 overflow-hidden">
+                                        <div class="bg-yellow-500 h-full" style="width: {% widthratio row.count reviews_published 100 %}%"></div>
+                                    </div>
+                                    <span class="text-sm text-gray-600 dark:text-gray-400 w-10 text-right">{{ row.count }}</span>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="text-gray-500 dark:text-gray-400">Опубликованных отзывов пока нет</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
         <!-- Fifth Row: Monthly Stats & App List -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <!-- Monthly Stats -->
@@ -320,11 +528,19 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div class="p-3 bg-gray-50 dark:bg-base-700 rounded">
                         <div class="text-sm text-gray-500 dark:text-gray-400">Новые заказы</div>
-                        <div class="text-xl font-bold text-gray-900 dark:text-white">{{ orders_this_month }}</div>
+                        <div class="text-xl font-bold text-gray-900 dark:text-white">{{ orders_last_30d }}</div>
                     </div>
                     <div class="p-3 bg-gray-50 dark:bg-base-700 rounded">
                         <div class="text-sm text-gray-500 dark:text-gray-400">Выручка</div>
-                        <div class="text-xl font-bold text-gray-900 dark:text-white">{{ revenue_this_month|floatformat:2 }} ₽</div>
+                        <div class="text-xl font-bold text-gray-900 dark:text-white">{{ revenue_last_30d|floatformat:2 }} ₽</div>
+                    </div>
+                    <div class="p-3 bg-gray-50 dark:bg-base-700 rounded">
+                        <div class="text-sm text-gray-500 dark:text-gray-400">Новые обращения</div>
+                        <div class="text-xl font-bold text-gray-900 dark:text-white">{{ feedback_last_week }}<span class="text-sm text-gray-500"> / нед.</span></div>
+                    </div>
+                    <div class="p-3 bg-gray-50 dark:bg-base-700 rounded">
+                        <div class="text-sm text-gray-500 dark:text-gray-400">Оплаченных заказов</div>
+                        <div class="text-xl font-bold text-gray-900 dark:text-white">{{ paid_orders_count }}</div>
                     </div>
                 </div>
             </div>
