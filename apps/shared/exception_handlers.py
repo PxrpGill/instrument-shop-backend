@@ -10,6 +10,7 @@ from __future__ import annotations
 import logging
 
 from django.http import Http404
+from django_ratelimit.exceptions import Ratelimited
 from ninja import NinjaAPI
 from ninja.errors import HttpError, ValidationError
 
@@ -53,6 +54,16 @@ def register_error_handlers(api: NinjaAPI) -> None:
             }
         }
         return api.create_response(request, payload, status=404)
+
+    @api.exception_handler(Ratelimited)
+    def _handle_ratelimited(request, exc: Ratelimited):
+        payload = {
+            "error": {
+                "code": ErrorCode.RATE_LIMITED,
+                "message": "Слишком много обращений. Попробуйте позже.",
+            }
+        }
+        return api.create_response(request, payload, status=429)
 
     @api.exception_handler(HttpError)
     def _handle_http_error(request, exc: HttpError):

@@ -69,6 +69,8 @@ INSTALLED_APPS = [
     "apps.reviews",
     "apps.pages",
     "apps.news",
+    "apps.favorites",
+    "apps.feedback",
 ]
 
 MIDDLEWARE = [

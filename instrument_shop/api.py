@@ -1,5 +1,7 @@
 from ninja import NinjaAPI
 
+from apps.favorites.controllers import router as favorites_router
+from apps.feedback.controllers import router as feedback_router
 from apps.news.controllers import router as news_router
 from apps.orders.controllers import router as orders_router
 from apps.pages.controllers import router as pages_router
@@ -40,6 +42,12 @@ api.add_router("/pages/", pages_router)
 
 # News (public) — см. contracts/news/*
 api.add_router("/news", news_router)
+
+# Favorites (private, auth) — см. contracts/favorites/*
+api.add_router("/favorites", favorites_router)
+
+# Feedback (public, rate-limited) — см. contracts/feedback/*
+api.add_router("/feedback", feedback_router)
 
 
 @api.get("/hello")
