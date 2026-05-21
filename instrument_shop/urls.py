@@ -24,7 +24,6 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/", api.urls),
     path("ckeditor5/", include("django_ckeditor_5.urls")),
-    path("nested_admin/", include("nested_admin.urls")),
 ]
 
 if settings.DEBUG:

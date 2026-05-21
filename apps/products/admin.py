@@ -1,10 +1,9 @@
-"""Admin configuration for products app using Unfold + django-nested-admin."""
+"""Admin configuration for products app using Unfold."""
 
-import nested_admin
 from django.contrib import admin
-from unfold.admin import ModelAdmin, TabularInline
+from unfold.admin import ModelAdmin, StackedInline, TabularInline
 
-from apps.shared.admin_mixins import NestedRichTextInlineMixin
+from apps.shared.admin_mixins import RichTextInlineMixin
 from apps.products.models import (
     Category,
     Product,
@@ -25,7 +24,7 @@ class ProductImageInline(TabularInline):
     autocomplete_fields = ("image",)
 
 
-class ProductDescriptionBlockInline(NestedRichTextInlineMixin, nested_admin.NestedStackedInline):
+class ProductDescriptionBlockInline(RichTextInlineMixin, StackedInline):
     """Блоки описания товара с CKEditor5."""
 
     model = ProductDescriptionBlock
@@ -37,7 +36,19 @@ class ProductDescriptionBlockInline(NestedRichTextInlineMixin, nested_admin.Nest
     verbose_name_plural = "Блоки описания"
 
 
-class ProductSpecItemInline(nested_admin.NestedTabularInline):
+class ProductSpecGroupInline(TabularInline):
+    """Группы характеристик на товаре — строки редактируются на отдельной странице группы."""
+
+    model = ProductSpecGroup
+    extra = 0
+    fields = ("title", "order")
+    ordering = ("order",)
+    show_change_link = True
+    verbose_name = "Группа характеристик"
+    verbose_name_plural = "Технические характеристики"
+
+
+class ProductSpecItemInline(TabularInline):
     """Строки характеристик внутри группы."""
 
     model = ProductSpecItem
@@ -48,22 +59,8 @@ class ProductSpecItemInline(nested_admin.NestedTabularInline):
     verbose_name_plural = "Характеристики"
 
 
-class ProductSpecGroupInline(nested_admin.NestedStackedInline):
-    """Группа характеристик с вложенными строками."""
-
-    model = ProductSpecGroup
-    extra = 0
-    fields = ("title", "order")
-    ordering = ("order",)
-    inlines = [ProductSpecItemInline]
-    verbose_name = "Группа характеристик"
-    verbose_name_plural = "Технические характеристики"
-
-
 @admin.register(Category, site=admin.site)
 class CategoryAdmin(ModelAdmin):
-    """Админ-панель для модели Category."""
-
     list_display = ("name", "slug", "created_at")
     search_fields = ("name", "slug")
     prepopulated_fields = {"slug": ("name",)}
@@ -72,9 +69,7 @@ class CategoryAdmin(ModelAdmin):
 
 
 @admin.register(Product, site=admin.site)
-class ProductAdmin(nested_admin.NestedModelAdmin, ModelAdmin):
-    """Админ-панель для модели Product."""
-
+class ProductAdmin(ModelAdmin):
     list_display = ("name", "brand", "price", "status", "availability", "created_at")
     list_filter = ("status", "availability", "categories", "brand")
     search_fields = ("name", "sku", "brand", "description")
@@ -113,10 +108,19 @@ class ProductAdmin(nested_admin.NestedModelAdmin, ModelAdmin):
     )
 
 
+@admin.register(ProductSpecGroup, site=admin.site)
+class ProductSpecGroupAdmin(ModelAdmin):
+    """Группа характеристик — редактируется отдельной страницей (как HomePageShowcase)."""
+
+    list_display = ("title", "product", "order")
+    list_filter = ("product",)
+    search_fields = ("title", "product__name")
+    ordering = ("product", "order")
+    inlines = [ProductSpecItemInline]
+
+
 @admin.register(ProductImage, site=admin.site)
 class ProductImageAdmin(ModelAdmin):
-    """Админ-панель для модели ProductImage."""
-
     list_display = ("product", "image", "is_primary", "order", "created_at")
     list_filter = ("is_primary",)
     search_fields = ("product__name",)

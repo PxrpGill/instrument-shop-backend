@@ -52,7 +52,6 @@ INSTALLED_APPS = [
     "unfold.contrib.filters",  # Enhanced filters for admin
     "unfold.contrib.forms",  # Enhanced form elements
     "unfold.contrib.inlines",  # Enhanced inlines
-    "nested_admin",
     "django_ckeditor_5",
     "django.contrib.admin",
     "django.contrib.auth",
