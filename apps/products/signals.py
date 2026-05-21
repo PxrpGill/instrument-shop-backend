@@ -7,7 +7,14 @@ from django.dispatch import receiver
 
 from .catalog_controllers import (invalidate_catalog_cache,
                                   invalidate_product_cache)
-from .models import Category, Product, ProductImage
+from .models import (
+    Category,
+    Product,
+    ProductDescriptionBlock,
+    ProductImage,
+    ProductSpecGroup,
+    ProductSpecItem,
+)
 
 
 @receiver(post_save, sender=Product)
@@ -28,3 +35,21 @@ def _category_changed(sender, instance: Category, **kwargs):
 def _product_image_changed(sender, instance: ProductImage, **kwargs):
     invalidate_product_cache(instance.product_id)
     invalidate_catalog_cache()
+
+
+@receiver(post_save, sender=ProductDescriptionBlock)
+@receiver(post_delete, sender=ProductDescriptionBlock)
+def _description_block_changed(sender, instance: ProductDescriptionBlock, **kwargs):
+    invalidate_product_cache(instance.product_id)
+
+
+@receiver(post_save, sender=ProductSpecGroup)
+@receiver(post_delete, sender=ProductSpecGroup)
+def _spec_group_changed(sender, instance: ProductSpecGroup, **kwargs):
+    invalidate_product_cache(instance.product_id)
+
+
+@receiver(post_save, sender=ProductSpecItem)
+@receiver(post_delete, sender=ProductSpecItem)
+def _spec_item_changed(sender, instance: ProductSpecItem, **kwargs):
+    invalidate_product_cache(instance.group.product_id)

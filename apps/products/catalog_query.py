@@ -18,7 +18,7 @@ from django.db.models import Max, Min, Prefetch, QuerySet
 
 from apps.shared.utils.pagination import paginate as _paginate
 
-from .models import Category, Product, ProductImage, ProductStatusChoices
+from .models import Category, Product, ProductDescriptionBlock, ProductImage, ProductSpecGroup, ProductSpecItem, ProductStatusChoices
 
 DEFAULT_PER_PAGE = 24
 MAX_PER_PAGE = 100
@@ -44,9 +44,20 @@ def published_products() -> QuerySet[Product]:
     image_qs = ProductImage.objects.select_related("image").order_by(
         "-is_primary", "order", "created_at"
     )
+    spec_items_qs = ProductSpecItem.objects.order_by("order")
+    spec_groups_qs = ProductSpecGroup.objects.prefetch_related(
+        Prefetch("spec_items", queryset=spec_items_qs)
+    ).order_by("order")
+    desc_blocks_qs = ProductDescriptionBlock.objects.order_by("order")
+
     return Product.objects.filter(
         status=ProductStatusChoices.PUBLISHED
-    ).prefetch_related("categories", Prefetch("images", queryset=image_qs))
+    ).prefetch_related(
+        "categories",
+        Prefetch("images", queryset=image_qs),
+        Prefetch("description_blocks", queryset=desc_blocks_qs),
+        Prefetch("spec_groups", queryset=spec_groups_qs),
+    )
 
 
 def apply_catalog_filters(

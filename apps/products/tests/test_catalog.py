@@ -4,7 +4,8 @@ import pytest
 from django.core.cache import cache
 
 from apps.products.models import (Product, ProductAvailabilityChoices,
-                                  ProductStatusChoices)
+                                  ProductDescriptionBlock, ProductSpecGroup,
+                                  ProductSpecItem, ProductStatusChoices)
 
 pytestmark = pytest.mark.django_db
 
@@ -283,21 +284,23 @@ class TestProductDetail:
         assert response.status_code == 404
 
     def test_returns_description_and_tech_specs(self, client, published_product):
-        published_product.description_parameters = [
-            {
-                "title": "Общие характеристики",
-                "parameters": "<p>Тип: дрель</p>",
-            }
-        ]
-        published_product.technical_specifications = [
-            {
-                "title": "Электрика",
-                "specifications": [
-                    {"label": "Напряжение", "value": "220 В"},
-                ],
-            }
-        ]
-        published_product.save()
+        ProductDescriptionBlock.objects.create(
+            product=published_product,
+            title="Общие характеристики",
+            content="<p>Тип: дрель</p>",
+            order=0,
+        )
+        group = ProductSpecGroup.objects.create(
+            product=published_product,
+            title="Электрика",
+            order=0,
+        )
+        ProductSpecItem.objects.create(
+            group=group,
+            label="Напряжение",
+            value="220 В",
+            order=0,
+        )
 
         response = client.get(f"/catalog/products/{published_product.id}")
         product = response.json()["product"]

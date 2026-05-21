@@ -77,25 +77,6 @@ class Product(TimeStampedModel):
         verbose_name="Гибкие параметры",
         help_text="Гибкие параметры: размер, цвет, объем и т.д.",
     )
-    description_parameters = models.JSONField(
-        default=list,
-        blank=True,
-        verbose_name="Параметры описания",
-        help_text=(
-            "Список разделов описания товара. Формат: "
-            '[{"title": "Общие характеристики", "parameters": "<p>HTML</p>"}].'
-        ),
-    )
-    technical_specifications = models.JSONField(
-        default=list,
-        blank=True,
-        verbose_name="Технические характеристики",
-        help_text=(
-            "Список групп характеристик. Формат: "
-            '[{"title": "Электрические параметры", '
-            '"specifications": [{"label": "Напряжение", "value": "220 В"}]}].'
-        ),
-    )
     price = models.DecimalField(
         max_digits=10,
         decimal_places=2,
@@ -147,26 +128,77 @@ class Product(TimeStampedModel):
     def __str__(self) -> str:
         return self.name
 
+class ProductDescriptionBlock(models.Model):
+    """Блок описания товара: заголовок + HTML-контент из CKEditor."""
+
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name="description_blocks",
+        verbose_name="Товар",
+    )
+    title = models.CharField(max_length=255, verbose_name="Заголовок")
+    content = models.TextField(
+        blank=True,
+        default="",
+        verbose_name="Контент (HTML)",
+    )
+    order = models.PositiveIntegerField(default=0, verbose_name="Порядок")
+
+    class Meta:
+        verbose_name = "Блок описания"
+        verbose_name_plural = "Блоки описания"
+        ordering = ["order"]
+
+    def __str__(self) -> str:
+        return f"{self.product.name} — {self.title}"
+
     def save(self, *args, **kwargs):
-        self.description_parameters = _sanitize_description_parameters(
-            self.description_parameters or []
-        )
+        self.content = sanitize_html(self.content)
         super().save(*args, **kwargs)
 
 
-def _sanitize_description_parameters(blocks):
-    """Очистить HTML в parameters каждого блока через bleach."""
-    cleaned = []
-    for block in blocks:
-        if not isinstance(block, dict):
-            continue
-        cleaned.append(
-            {
-                "title": str(block.get("title", "")),
-                "parameters": sanitize_html(block.get("parameters", "")),
-            }
-        )
-    return cleaned
+class ProductSpecGroup(models.Model):
+    """Группа технических характеристик товара."""
+
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name="spec_groups",
+        verbose_name="Товар",
+    )
+    title = models.CharField(max_length=255, verbose_name="Заголовок группы")
+    order = models.PositiveIntegerField(default=0, verbose_name="Порядок")
+
+    class Meta:
+        verbose_name = "Группа характеристик"
+        verbose_name_plural = "Группы характеристик"
+        ordering = ["order"]
+
+    def __str__(self) -> str:
+        return f"{self.product.name} — {self.title}"
+
+
+class ProductSpecItem(models.Model):
+    """Строка технической характеристики: метка + значение."""
+
+    group = models.ForeignKey(
+        ProductSpecGroup,
+        on_delete=models.CASCADE,
+        related_name="spec_items",
+        verbose_name="Группа",
+    )
+    label = models.CharField(max_length=255, verbose_name="Параметр")
+    value = models.CharField(max_length=255, verbose_name="Значение")
+    order = models.PositiveIntegerField(default=0, verbose_name="Порядок")
+
+    class Meta:
+        verbose_name = "Характеристика"
+        verbose_name_plural = "Характеристики"
+        ordering = ["order"]
+
+    def __str__(self) -> str:
+        return f"{self.label}: {self.value}"
 
 
 class ProductImage(TimeStampedModel):

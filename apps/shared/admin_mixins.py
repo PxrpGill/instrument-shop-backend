@@ -36,3 +36,20 @@ class RichTextInlineMixin:
             if field_name in formset.form.base_fields:
                 formset.form.base_fields[field_name].widget = CKEditor5Widget(config_name="full")
         return formset
+
+
+class NestedRichTextInlineMixin:
+    """Подставляет CKEditor5Widget для указанных полей в nested_admin NestedInline."""
+
+    simple_rich_fields: tuple[str, ...] = ()
+    full_rich_fields: tuple[str, ...] = ()
+
+    def get_formset(self, request, obj=None, **kwargs):
+        formset = super().get_formset(request, obj, **kwargs)
+        for field_name in self.simple_rich_fields:
+            if field_name in formset.form.base_fields:
+                formset.form.base_fields[field_name].widget = CKEditor5Widget(config_name="simple")
+        for field_name in self.full_rich_fields:
+            if field_name in formset.form.base_fields:
+                formset.form.base_fields[field_name].widget = CKEditor5Widget(config_name="full")
+        return formset

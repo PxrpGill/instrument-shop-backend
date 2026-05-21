@@ -123,15 +123,11 @@ def serialize_product_detail(
     if gallery:
         detail["gallery"] = gallery
 
-    description_parameters = _serialize_description_parameters(
-        product.description_parameters or []
-    )
+    description_parameters = _serialize_description_parameters(product)
     if description_parameters:
         detail["descriptionParameters"] = description_parameters
 
-    technical_specifications = _serialize_technical_specifications(
-        product.technical_specifications or []
-    )
+    technical_specifications = _serialize_technical_specifications(product)
     if technical_specifications:
         # Внимание: имя поля с опечаткой — этого требует контракт фронта.
         detail["techicalSpecifications"] = technical_specifications
@@ -139,35 +135,23 @@ def serialize_product_detail(
     return detail
 
 
-def _serialize_description_parameters(blocks) -> list[dict]:
+def _serialize_description_parameters(product) -> list[dict]:
     out: list[dict] = []
-    for block in blocks:
-        if not isinstance(block, dict):
+    for block in product.description_blocks.all():
+        if not block.title or not block.content:
             continue
-        title = block.get("title")
-        parameters = block.get("parameters")
-        if not title or not parameters:
-            continue
-        out.append({"title": str(title), "parameters": str(parameters)})
+        out.append({"title": block.title, "parameters": block.content})
     return out
 
 
-def _serialize_technical_specifications(groups) -> list[dict]:
+def _serialize_technical_specifications(product) -> list[dict]:
     out: list[dict] = []
-    for group in groups:
-        if not isinstance(group, dict):
-            continue
-        title = group.get("title")
-        specs = group.get("specifications") or []
-        rows: list[dict] = []
-        for row in specs:
-            if not isinstance(row, dict):
-                continue
-            label = row.get("label")
-            value = row.get("value")
-            if label is None or value is None:
-                continue
-            rows.append({"label": str(label), "value": str(value)})
-        if title and rows:
-            out.append({"title": str(title), "specifications": rows})
+    for group in product.spec_groups.all():
+        rows: list[dict] = [
+            {"label": item.label, "value": item.value}
+            for item in group.spec_items.all()
+            if item.label
+        ]
+        if group.title and rows:
+            out.append({"title": group.title, "specifications": rows})
     return out
