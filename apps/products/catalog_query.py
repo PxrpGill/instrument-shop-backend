@@ -5,6 +5,7 @@
     products_qs = published_products()
     products_qs = apply_catalog_filters(products_qs, filters)
     products_qs = apply_sort(products_qs, sort)
+    products_qs = apply_search(products_qs, q)
     items, meta = paginate(products_qs, page, per_page, max_per_page=MAX_PER_PAGE)
 """
 
@@ -14,7 +15,7 @@ from dataclasses import dataclass
 from decimal import Decimal
 from typing import Iterable, List, Optional
 
-from django.db.models import Max, Min, Prefetch, QuerySet
+from django.db.models import Max, Min, Prefetch, Q, QuerySet
 
 from apps.shared.utils.pagination import paginate as _paginate
 
@@ -126,3 +127,12 @@ def showcase_for_product(product: Product, limit: int = 8) -> dict:
         if items:
             showcases.append({"category": category, "products": items})
     return {"showcases": showcases}
+
+
+def apply_search(qs: QuerySet[Product], q: Optional[str]) -> QuerySet[Product]:
+    """Case-insensitive substring search across name, brand, sku. q < 3 chars is a no-op."""
+    if not q or len(q) < 3:
+        return qs
+    return qs.filter(
+        Q(name__icontains=q) | Q(brand__icontains=q) | Q(sku__icontains=q)
+    )

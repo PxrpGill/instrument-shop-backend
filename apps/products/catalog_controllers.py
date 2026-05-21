@@ -79,6 +79,7 @@ def get_catalog(
     price_max: Optional[int] = Query(None, ge=0),
     categories: Optional[List[str]] = Query(None),
     sort: Optional[str] = Query(cq.SORT_POPULAR),
+    q: Optional[str] = Query(None, min_length=3),
 ):
     """Главная каталога: плитки категорий, фильтры и пагинированный список."""
     params = sorted(request.GET.items())
@@ -100,7 +101,8 @@ def get_catalog(
     start_range, end_range = cq.compute_price_range(all_published)
 
     filtered = cq.apply_catalog_filters(all_published, filters)
-    sorted_qs = cq.apply_sort(filtered, sort)
+    searched = cq.apply_search(filtered, q)
+    sorted_qs = cq.apply_sort(searched, sort)
     items, meta = cq.paginate_products(sorted_qs, page=page, per_page=per_page)
 
     payload = {
@@ -134,6 +136,7 @@ def get_category(
     price_min: Optional[int] = Query(None, ge=0),
     price_max: Optional[int] = Query(None, ge=0),
     sort: Optional[str] = Query(cq.SORT_POPULAR),
+    q: Optional[str] = Query(None, min_length=3),
 ):
     """Страница одной категории: фильтр цены + товары этой категории."""
     try:
@@ -156,7 +159,8 @@ def get_category(
         base_qs,
         cq.CatalogFilters(price_min=price_min, price_max=price_max),
     )
-    sorted_qs = cq.apply_sort(filtered, sort)
+    searched = cq.apply_search(filtered, q)
+    sorted_qs = cq.apply_sort(searched, sort)
     items, meta = cq.paginate_products(sorted_qs, page=page, per_page=per_page)
 
     payload = {
