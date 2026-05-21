@@ -239,7 +239,10 @@ def invalidate_catalog_cache() -> None:
 
 def invalidate_product_cache(product_id: int) -> None:
     """Сбросить кеш одного товара (точечная инвалидация после публикации/правки)."""
-    cache.delete(_make_product_key(product_id))
+    try:
+        cache.delete(_make_product_key(product_id))
+    except Exception:
+        pass
 
 
 # Сохраняем ссылку, чтобы при необходимости можно было передать через DI.
