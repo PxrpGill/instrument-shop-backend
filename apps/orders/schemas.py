@@ -84,7 +84,17 @@ class OrderItemCreateSchema(BaseModel):
 class OrderItemResponseSchema(BaseModel):
     """Schema for order item in response."""
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={"example": {
+            "id": 15,
+            "product_id": 42,
+            "product_name": "Перфоратор Bosch GBH 2-28",
+            "quantity": 2,
+            "unit_price": "12500.00",
+            "subtotal": "25000.00",
+        }},
+    )
 
     id: int
     product_id: int
@@ -155,7 +165,28 @@ class OrderCreateSchema(BaseModel):
 class OrderResponseSchema(BaseModel):
     """Schema for order response (customer view)."""
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={"example": {
+            "id": 101,
+            "status": "processing",
+            "contact_email": "ivan@example.ru",
+            "contact_phone": "+7 (916) 123-45-67",
+            "first_name": "Иван",
+            "last_name": "Петров",
+            "address": "г. Москва, ул. Строителей, д. 5, кв. 12",
+            "notes": "Позвоните перед доставкой",
+            "total_amount": "25000.00",
+            "items": [
+                {
+                    "id": 15, "product_id": 42, "product_name": "Перфоратор Bosch GBH 2-28",
+                    "quantity": 2, "unit_price": "12500.00", "subtotal": "25000.00",
+                }
+            ],
+            "created_at": "2024-11-20T14:35:00Z",
+            "updated_at": "2024-11-20T14:35:00Z",
+        }},
+    )
 
     id: int
     order_number: Optional[str] = None
@@ -194,7 +225,17 @@ class OrderResponseSchema(BaseModel):
 class OrderListResponseSchema(BaseModel):
     """Schema for order list response (summary)."""
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={"example": {
+            "id": 101,
+            "status": "confirmed",
+            "contact_email": "ivan@example.ru",
+            "total_amount": "25000.00",
+            "items_count": 2,
+            "created_at": "2024-11-20T14:35:00Z",
+        }},
+    )
 
     id: int
     order_number: Optional[str] = None

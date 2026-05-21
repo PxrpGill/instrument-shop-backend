@@ -314,6 +314,7 @@ class BannerContentPageMixin(SingletonModel):
         abstract = True
 
     def save(self, *args, **kwargs):
+        self.banner_description = sanitize_html(self.banner_description)
         self.content = sanitize_html(self.content)
         super().save(*args, **kwargs)
 
@@ -463,7 +464,7 @@ class LegalSection(models.Model):
     )
     content = models.TextField(
         verbose_name="Текст",
-        help_text="Plain text. Абзацы разделяются двумя переводами строки.",
+        help_text="HTML-контент. Допустимы теги p, strong, em, ul, ol, li, a, h2–h4. Скрипты вырезаются.",
     )
     order = models.PositiveIntegerField(
         default=0,
@@ -478,3 +479,7 @@ class LegalSection(models.Model):
 
     def __str__(self) -> str:
         return f"{self.document_id} · {self.title}"
+
+    def save(self, *args, **kwargs):
+        self.content = sanitize_html(self.content)
+        super().save(*args, **kwargs)

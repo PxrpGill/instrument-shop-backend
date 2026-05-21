@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     "unfold.contrib.filters",  # Enhanced filters for admin
     "unfold.contrib.forms",  # Enhanced form elements
     "unfold.contrib.inlines",  # Enhanced inlines
+    "django_ckeditor_5",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -205,6 +206,44 @@ UNFOLD = {
     "SITE_HEADER": "Instrument Shop",
     "SITE_URL": "/",
 }
+
+
+# =============================================================================
+# CKEditor 5 Configuration
+# =============================================================================
+
+CKEDITOR_5_CONFIGS = {
+    "simple": {
+        "toolbar": [
+            "bold", "italic", "underline", "strikethrough",
+            "|", "link",
+            "|", "undo", "redo",
+        ],
+    },
+    "full": {
+        "toolbar": [
+            "heading", "|",
+            "bold", "italic", "underline", "strikethrough",
+            "|", "bulletedList", "numberedList",
+            "|", "blockQuote", "link", "uploadImage",
+            "|", "undo", "redo",
+        ],
+        "heading": {
+            "options": [
+                {"model": "paragraph", "title": "Paragraph", "class": "ck-heading_paragraph"},
+                {"model": "heading2", "view": "h2", "title": "Heading 2", "class": "ck-heading_heading2"},
+                {"model": "heading3", "view": "h3", "title": "Heading 3", "class": "ck-heading_heading3"},
+                {"model": "heading4", "view": "h4", "title": "Heading 4", "class": "ck-heading_heading4"},
+            ]
+        },
+        "image": {
+            "toolbar": ["imageTextAlternative"],
+        },
+    },
+}
+
+CKEDITOR_5_UPLOAD_FILE_TYPES = ["jpeg", "jpg", "png", "gif", "webp"]
+CKEDITOR_5_FILE_UPLOAD_PERMISSION = "staff"
 
 
 # =============================================================================

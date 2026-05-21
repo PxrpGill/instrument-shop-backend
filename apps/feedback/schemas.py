@@ -12,7 +12,7 @@ from __future__ import annotations
 import re
 
 from ninja import Schema
-from pydantic import EmailStr, Field, field_validator
+from pydantic import ConfigDict, EmailStr, Field, field_validator
 
 
 # Российский формат: +7 (XXX) XXX-XX-XX, разделители — пробелы/тире/опц. скобки.
@@ -59,5 +59,10 @@ class FeedbackSubmitRequest(Schema):
 
 
 class FeedbackSubmitResponse(Schema):
+    model_config = ConfigDict(json_schema_extra={"example": {
+        "id": 88,
+        "message": "Спасибо! Ваше обращение принято. Мы свяжемся с вами в ближайшее время.",
+    }})
+
     id: int
     message: str

@@ -42,3 +42,21 @@ def test_legal_document_with_sections_ordered(client):
     assert data["last_updated"] == "01.01.2025"
     assert [s["id"] for s in data["sections"]] == ["general", "data-collected"]
     assert data["sections"][0]["content"] == "Абзац 1.\n\nАбзац 2."
+
+
+def test_legal_section_save_sanitizes_html_content():
+    from apps.pages.models import LegalDocument, LegalDocumentSlugChoices
+
+    doc = LegalDocument.objects.create(
+        slug=LegalDocumentSlugChoices.PRIVACY_POLICY,
+        title="Политика",
+    )
+    section = LegalSection.objects.create(
+        document=doc,
+        anchor_id="sec-1",
+        title="Раздел",
+        content='<p>Текст</p><script>alert(1)</script>',
+        order=1,
+    )
+    assert "<script" not in section.content
+    assert "<p>Текст</p>" in section.content

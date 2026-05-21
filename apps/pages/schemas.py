@@ -8,6 +8,7 @@
 from typing import List, Optional
 
 from ninja import Schema
+from pydantic import ConfigDict
 
 from apps.shared.schemas import PictureSchema, SiteLink
 
@@ -72,6 +73,32 @@ class HomeNewsCTA(Schema):
 
 
 class HomePageOut(Schema):
+    model_config = ConfigDict(json_schema_extra={"example": {
+        "hero": {
+            "title": "Профессиональные инструменты с доставкой",
+            "description": "Широкий выбор строительных инструментов от ведущих мировых производителей",
+            "button": {"title": "Перейти в каталог", "href": "/catalog"},
+            "poster": {"original": {"src": "/media/pages/hero-bg.jpg", "mobile": None}, "webp": None, "avif": None},
+        },
+        "about_company": {
+            "title": "О компании",
+            "content": "<p>Мы поставляем инструменты с 2010 года...</p>",
+            "poster": None,
+        },
+        "reviews": {
+            "title": "Отзывы покупателей",
+            "reviews": [
+                {
+                    "title": "Отличный инструмент!",
+                    "description": "Купил перфоратор, очень доволен качеством.",
+                    "grade": 5,
+                    "author": {"fullName": "Алексей Смирнов", "icon": None},
+                }
+            ],
+        },
+        "showcase": None,
+        "news_cta": None,
+    }})
     hero: Optional[HomeHero] = None
     about_company: Optional[HomeAbout] = None
     reviews: Optional[HomeReviews] = None
@@ -91,6 +118,14 @@ class BannerWithoutButton(Schema):
 
 
 class BannerPageOut(Schema):
+    model_config = ConfigDict(json_schema_extra={"example": {
+        "banner": {
+            "title": "О компании",
+            "description": "Интернет-магазин профессионального инструмента с 2010 года",
+            "poster": {"original": {"src": "/media/pages/about-banner.jpg", "mobile": None}, "webp": None, "avif": None},
+        },
+        "content": "<p>Мы специализируемся на продаже профессионального инструмента...</p>",
+    }})
     banner: Optional[BannerWithoutButton] = None
     content: Optional[str] = None
 
@@ -106,6 +141,18 @@ class FeedbackSection(Schema):
 
 
 class FeedbackPageOut(Schema):
+    model_config = ConfigDict(json_schema_extra={"example": {
+        "section": {
+            "title": "Обратная связь",
+            "description": "Оставьте заявку и мы свяжемся с вами в течение рабочего дня",
+        },
+        "news_cta": {
+            "title": "Читайте наш блог",
+            "description": "Обзоры, советы и новости мира инструментов",
+            "button": {"title": "Перейти в новости", "href": "/news"},
+            "poster": None,
+        },
+    }})
     section: Optional[FeedbackSection] = None
     news_cta: Optional[HomeNewsCTA] = None
 
@@ -122,6 +169,22 @@ class LegalSectionOut(Schema):
 
 
 class LegalDocumentOut(Schema):
+    model_config = ConfigDict(json_schema_extra={"example": {
+        "title": "Политика конфиденциальности",
+        "last_updated": "2024-09-01",
+        "sections": [
+            {
+                "id": "general",
+                "title": "1. Общие положения",
+                "content": "<p>Настоящая политика определяет порядок обработки персональных данных...</p>",
+            },
+            {
+                "id": "data-collection",
+                "title": "2. Сбор данных",
+                "content": "<p>Мы собираем данные, которые вы предоставляете при регистрации...</p>",
+            },
+        ],
+    }})
     title: str
     last_updated: str
     sections: List[LegalSectionOut]

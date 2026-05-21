@@ -7,12 +7,25 @@
 from typing import Optional
 
 from ninja import ModelSchema
+from pydantic import ConfigDict
 
 from .models import Category, Product, ProductImage
 
 
 class CategorySchema(ModelSchema):
     """Схема Category для admin API."""
+
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={"example": {
+            "id": 3,
+            "slug": "dreli",
+            "name": "Дрели",
+            "poster": None,
+            "created_at": "2024-01-10T08:00:00Z",
+            "updated_at": "2024-06-01T12:00:00Z",
+        }},
+    )
 
     class Meta:
         model = Category
@@ -29,6 +42,18 @@ class CategoryCreateSchema(ModelSchema):
 
 class ProductImageSchema(ModelSchema):
     """Схема ProductImage для admin API."""
+
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={"example": {
+            "id": 7,
+            "image": "/media/products/bosch-gbh228-main.jpg",
+            "is_primary": True,
+            "order": 0,
+            "created_at": "2024-03-20T09:15:00Z",
+            "updated_at": "2024-03-20T09:15:00Z",
+        }},
+    )
 
     class Meta:
         model = ProductImage
@@ -52,6 +77,29 @@ class ProductImageCreateSchema(ModelSchema):
 
 class ProductSchema(ModelSchema):
     """Схема Product для admin API."""
+
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={"example": {
+            "id": 42,
+            "name": "Перфоратор Bosch GBH 2-28",
+            "description": "Мощный перфоратор для профессионального использования",
+            "parameters": "",
+            "description_parameters": [],
+            "technical_specifications": [],
+            "price": "12500.00",
+            "sku": "BOSCH-GBH228",
+            "brand": "Bosch",
+            "status": "published",
+            "availability": True,
+            "categories": [{"id": 1, "slug": "perforatory", "name": "Перфораторы", "poster": None,
+                            "created_at": "2024-01-10T08:00:00Z", "updated_at": "2024-01-10T08:00:00Z"}],
+            "images": [{"id": 7, "image": "/media/products/bosch-gbh228-main.jpg", "is_primary": True,
+                        "order": 0, "created_at": "2024-03-20T09:15:00Z", "updated_at": "2024-03-20T09:15:00Z"}],
+            "created_at": "2024-03-15T10:00:00Z",
+            "updated_at": "2024-06-10T14:30:00Z",
+        }},
+    )
 
     categories: Optional[list[CategorySchema]] = []
     images: Optional[list[ProductImageSchema]] = []

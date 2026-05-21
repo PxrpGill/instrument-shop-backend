@@ -13,6 +13,8 @@ from django.shortcuts import redirect
 from django.urls import path, reverse
 from unfold.admin import ModelAdmin, StackedInline, TabularInline
 
+from apps.shared.admin_mixins import RichTextAdminMixin, RichTextInlineMixin
+
 from .models import (
     AboutUsPage,
     BuyersPage,
@@ -117,7 +119,9 @@ class HomePageShowcaseInline(TabularInline):
 
 
 @admin.register(HomePage, site=admin.site)
-class HomePageAdmin(SingletonAdminMixin, ModelAdmin):
+class HomePageAdmin(RichTextAdminMixin, SingletonAdminMixin, ModelAdmin):
+    simple_rich_fields = ("hero_description", "news_cta_description")
+    full_rich_fields = ("about_content",)
     inlines = [HomePageReviewInline, HomePageShowcaseInline]
     autocomplete_fields = ("hero_poster", "about_poster", "news_cta_poster")
     readonly_fields = ("created_at", "updated_at")
@@ -182,7 +186,9 @@ class HomePageAdmin(SingletonAdminMixin, ModelAdmin):
 # =============================================================================
 
 
-class _BannerPageAdmin(SingletonAdminMixin, ModelAdmin):
+class _BannerPageAdmin(RichTextAdminMixin, SingletonAdminMixin, ModelAdmin):
+    simple_rich_fields = ("banner_description",)
+    full_rich_fields = ("content",)
     autocomplete_fields = ("banner_poster",)
     readonly_fields = ("created_at", "updated_at")
     fieldsets = (
@@ -223,7 +229,8 @@ class BuyersPageAdmin(_BannerPageAdmin):
 
 
 @admin.register(FeedbackPage, site=admin.site)
-class FeedbackPageAdmin(SingletonAdminMixin, ModelAdmin):
+class FeedbackPageAdmin(RichTextAdminMixin, SingletonAdminMixin, ModelAdmin):
+    simple_rich_fields = ("section_description", "news_cta_description")
     autocomplete_fields = ("news_cta_poster",)
     readonly_fields = ("created_at", "updated_at")
     fieldsets = (
@@ -259,11 +266,12 @@ class FeedbackPageAdmin(SingletonAdminMixin, ModelAdmin):
 # =============================================================================
 
 
-class LegalSectionInline(StackedInline):
+class LegalSectionInline(RichTextInlineMixin, StackedInline):
     model = LegalSection
     extra = 0
     fields = ("anchor_id", "title", "content", "order")
     ordering = ("order",)
+    simple_rich_fields = ("content",)
 
 
 @admin.register(LegalDocument, site=admin.site)
