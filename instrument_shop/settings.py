@@ -311,10 +311,16 @@ CACHES = {
         "LOCATION": os.environ.get("REDIS_URL", "redis://localhost:6379/1"),
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            "IGNORE_EXCEPTIONS": True,
         },
         "KEY_PREFIX": "instrument_shop",
     }
 }
+
+# When Redis is unavailable, allow requests through instead of blocking all traffic.
+# IGNORE_EXCEPTIONS=True makes django_redis return None/False on cache failures,
+# which django_ratelimit interprets as "rate limited" by default (fail closed).
+RATELIMIT_FAIL_OPEN = True
 
 
 # =============================================================================
