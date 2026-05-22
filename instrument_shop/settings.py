@@ -217,6 +217,7 @@ CKEDITOR_5_CONFIGS = {
     "simple": {
         "toolbar": [
             "bold", "italic", "underline", "strikethrough",
+            "|", "bulletedList", "numberedList",
             "|", "link",
             "|", "undo", "redo",
         ],
