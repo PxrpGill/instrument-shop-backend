@@ -8,6 +8,7 @@
 Аутентификация не требуется. На все эндпоинты включён rate limit и кеш.
 """
 
+import functools
 from typing import List, Optional
 
 from django.core.cache import cache
@@ -16,7 +17,7 @@ from django.shortcuts import get_object_or_404
 from django_ratelimit.decorators import ratelimit
 from ninja import Query, Router
 
-from apps.shared.errors import BusinessError, not_found
+from apps.shared.errors import BusinessError, not_found, validation_error
 
 from . import catalog_query as cq
 from .catalog_serializers import (serialize_categories, serialize_category,
@@ -25,6 +26,32 @@ from .catalog_serializers import (serialize_categories, serialize_category,
 from .models import Category, Product, ProductStatusChoices
 
 router = Router(tags=["Catalog"])
+
+
+def _is_ssr(request: HttpRequest) -> bool:
+    return request.headers.get("X-SSR-Rendering", "").lower() == "true"
+
+
+def _validate_per_page(request: HttpRequest, per_page: int) -> None:
+    if not _is_ssr(request) and per_page > cq.MAX_PER_PAGE:
+        raise validation_error(
+            fields={"per_page": f"Значение не должно превышать {cq.MAX_PER_PAGE}"}
+        )
+
+
+def ssr_ratelimit(key, rate, method="GET", block=True):
+    """Rate limit decorator, bypassed when X-SSR-Rendering: true header is present."""
+    def decorator(func):
+        ratelimited = ratelimit(key=key, rate=rate, method=method, block=block)(func)
+
+        @functools.wraps(func)
+        def wrapper(request, *args, **kwargs):
+            if _is_ssr(request):
+                return func(request, *args, **kwargs)
+            return ratelimited(request, *args, **kwargs)
+
+        return wrapper
+    return decorator
 
 # ---------------------------------------------------------------------------
 # Кеш-ключи и TTL
@@ -70,11 +97,11 @@ def _parse_category_slugs(raw: Optional[List[str]]) -> Optional[List[str]]:
 
 
 @router.get("")
-@ratelimit(key="ip", rate="100/m", method="GET", block=True)
+@ssr_ratelimit(key="ip", rate="100/m", method="GET", block=True)
 def get_catalog(
     request: HttpRequest,
     page: int = Query(1, ge=1),
-    per_page: int = Query(cq.DEFAULT_PER_PAGE, ge=1, le=cq.MAX_PER_PAGE),
+    per_page: int = Query(cq.DEFAULT_PER_PAGE, ge=1),
     price_min: Optional[int] = Query(None, ge=0),
     price_max: Optional[int] = Query(None, ge=0),
     categories: Optional[List[str]] = Query(None),
@@ -82,6 +109,7 @@ def get_catalog(
     q: Optional[str] = Query(None, min_length=3),
 ):
     """Главная каталога: плитки категорий, фильтры и пагинированный список."""
+    _validate_per_page(request, per_page)
     params = sorted(request.GET.items())
     cache_key = _make_catalog_key(params)
     cached = cache.get(cache_key)
@@ -127,18 +155,19 @@ def get_catalog(
 
 
 @router.get("/categories/{slug}")
-@ratelimit(key="ip", rate="100/m", method="GET", block=True)
+@ssr_ratelimit(key="ip", rate="100/m", method="GET", block=True)
 def get_category(
     request: HttpRequest,
     slug: str,
     page: int = Query(1, ge=1),
-    per_page: int = Query(cq.DEFAULT_PER_PAGE, ge=1, le=cq.MAX_PER_PAGE),
+    per_page: int = Query(cq.DEFAULT_PER_PAGE, ge=1),
     price_min: Optional[int] = Query(None, ge=0),
     price_max: Optional[int] = Query(None, ge=0),
     sort: Optional[str] = Query(cq.SORT_POPULAR),
     q: Optional[str] = Query(None, min_length=3),
 ):
     """Страница одной категории: фильтр цены + товары этой категории."""
+    _validate_per_page(request, per_page)
     try:
         category = Category.objects.get(slug=slug)
     except Category.DoesNotExist as exc:
@@ -179,7 +208,7 @@ def get_category(
 
 
 @router.get("/products/{product_id}")
-@ratelimit(key="ip", rate="100/m", method="GET", block=True)
+@ssr_ratelimit(key="ip", rate="100/m", method="GET", block=True)
 def get_product_detail(request: HttpRequest, product_id: int):
     """Карточка одного товара + showcase «Рекомендуем»."""
     cache_key = _make_product_key(product_id)

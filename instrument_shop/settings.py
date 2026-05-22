@@ -268,6 +268,7 @@ CORS_ALLOW_HEADERS = [
     "Authorization",
     "Content-Type",
     "X-Requested-With",
+    "X-SSR-Rendering",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
